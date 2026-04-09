@@ -167,7 +167,7 @@ export default function App() {
   }, [data]);
 
   return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", maxWidth: 720, margin: "0 auto", padding: "12px", color: "#1a1a1a" }}>
+    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", maxWidth: 960, margin: "0 auto", padding: "16px 24px", color: "#1a1a1a" }}>
       <div style={{ marginBottom: 12, paddingBottom: 8, borderBottom: "2px solid #1a1a1a" }}>
         <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#BCBFCC" }}>use.incorporadora</div>
         <h1 style={{ fontSize: 18, fontWeight: 700, margin: "2px 0 0" }}>Controle de Imobiliarias</h1>
