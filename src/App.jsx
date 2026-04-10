@@ -55,7 +55,7 @@ const DEFAULT_SCRIPTS={ligAbertura:"Oi [nome], Bruno Trolezi, responsavel comerc
 
 function useIsMobile(bp=768){const[m,setM]=useState(typeof window!=="undefined"?window.innerWidth<bp:false);useEffect(()=>{const h=()=>setM(window.innerWidth<bp);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h)},[bp]);return m}
 
-function RichEdit({value,onChange,placeholder,minH}){const ref=useRef(null);const init=useRef(false);const lastVal=useRef(value);useEffect(()=>{if(ref.current&&!init.current){ref.current.innerHTML=value||"";init.current=true}},[]);useEffect(()=>{if(ref.current&&value!==lastVal.current){ref.current.innerHTML=value||"";lastVal.current=value}},[value]);const cmd=(c,v)=>{document.execCommand(c,false,v);ref.current&&ref.current.focus()};const handle=()=>{if(ref.current){lastVal.current=ref.current.innerHTML;onChange(ref.current.innerHTML)}};return(<div style={{border:`1px solid ${P.steelLight}`,borderRadius:6,overflow:"hidden",background:P.white}}><div style={{display:"flex",alignItems:"center",gap:2,padding:"4px 8px",borderBottom:`1px solid ${P.steelLight}`,background:"#FAFAFA",flexWrap:"wrap"}}>{[{l:"B",c:"bold",s:{fontWeight:700}},{l:"I",c:"italic",s:{fontStyle:"italic"}},{l:"U",c:"underline",s:{textDecoration:"underline"}},{l:"S",c:"strikeThrough",s:{textDecoration:"line-through"}}].map(t=><button key={t.c} onMouseDown={e=>{e.preventDefault();cmd(t.c)}} style={{width:26,height:26,border:"none",background:"transparent",cursor:"pointer",borderRadius:3,fontSize:12,fontFamily:"inherit",color:P.black,display:"flex",alignItems:"center",justifyContent:"center",...t.s}}>{t.l}</button>)}<div style={{width:1,height:18,background:P.steelLight,margin:"0 4px"}}/>{["#FEF08A","#BBF7D0","#BFDBFE","#FBCFE8","#FED7AA"].map(c=><button key={c} onMouseDown={e=>{e.preventDefault();cmd("hiliteColor",c)}} style={{width:18,height:18,border:`1px solid ${P.steelLight}`,background:c,cursor:"pointer",borderRadius:3,margin:"0 1px"}}/>)}<button onMouseDown={e=>{e.preventDefault();cmd("removeFormat")}} style={{marginLeft:4,padding:"2px 6px",border:`1px solid ${P.steelLight}`,background:"transparent",cursor:"pointer",borderRadius:3,fontSize:10,fontFamily:"inherit",color:P.steelDark}}>Limpar</button></div><div ref={ref} contentEditable suppressContentEditableWarning onInput={handle} onBlur={handle} data-placeholder={placeholder} style={{padding:"10px 12px",minHeight:minH||80,fontSize:13,lineHeight:1.7,outline:"none",color:P.black,fontFamily:"inherit",overflowY:"auto",maxHeight:300}}/><style>{`[data-placeholder]:empty:before{content:attr(data-placeholder);color:${P.steelDark};font-style:italic;pointer-events:none}`}</style></div>)}
+function RichEdit({value,onChange,placeholder,minH}){const ref=useRef(null);const init=useRef(false);const lastVal=useRef(value);useEffect(()=>{if(ref.current&&!init.current){ref.current.innerHTML=value||"";init.current=true}},[]);useEffect(()=>{if(ref.current&&value!==lastVal.current){ref.current.innerHTML=value||"";lastVal.current=value}},[value]);const cmd=(c,v)=>{document.execCommand(c,false,v);ref.current&&ref.current.focus()};const handle=()=>{if(ref.current){lastVal.current=ref.current.innerHTML;onChange(ref.current.innerHTML)}};return(<div style={{border:`1px solid ${P.steelLight}`,borderRadius:6,overflow:"hidden",background:P.white}}><div style={{display:"flex",alignItems:"center",gap:2,padding:"4px 8px",borderBottom:`1px solid ${P.steelLight}`,background:"#FAFAFA",flexWrap:"wrap"}}>{[{l:"B",c:"bold",s:{fontWeight:700}},{l:"I",c:"italic",s:{fontStyle:"italic"}},{l:"U",c:"underline",s:{textDecoration:"underline"}},{l:"S",c:"strikeThrough",s:{textDecoration:"line-through"}}].map(t=><button key={t.c} onMouseDown={e=>{e.preventDefault();cmd(t.c)}} style={{width:26,height:26,border:"none",background:"transparent",cursor:"pointer",borderRadius:3,fontSize:12,fontFamily:"inherit",color:P.black,display:"flex",alignItems:"center",justifyContent:"center",...t.s}}>{t.l}</button>)}<div style={{width:1,height:18,background:P.steelLight,margin:"0 4px"}}/>{["#FEF08A","#BBF7D0","#BFDBFE","#FBCFE8","#FED7AA"].map(c=><button key={c} onMouseDown={e=>{e.preventDefault();cmd("hiliteColor",c)}} style={{width:18,height:18,border:`1px solid ${P.steelLight}`,background:c,cursor:"pointer",borderRadius:3,margin:"0 1px"}}/>)}<button onMouseDown={e=>{e.preventDefault();cmd("removeFormat")}} style={{marginLeft:4,padding:"2px 6px",border:`1px solid ${P.steelLight}`,background:"transparent",cursor:"pointer",borderRadius:3,fontSize:10,fontFamily:"inherit",color:P.steelDark}}>Limpar</button></div><div ref={ref} contentEditable suppressContentEditableWarning onBlur={handle} data-placeholder={placeholder} style={{padding:"10px 12px",minHeight:minH||80,fontSize:13,lineHeight:1.7,outline:"none",color:P.black,fontFamily:"inherit",overflowY:"auto",maxHeight:300}}/><style>{`[data-placeholder]:empty:before{content:attr(data-placeholder);color:${P.steelDark};font-style:italic;pointer-events:none}`}</style></div>)}
 
 export default function App(){
   const mob=useIsMobile();
@@ -69,8 +69,9 @@ export default function App(){
   const[scriptTab,setScriptTab]=useState("ligacao");
   const[scripts,setScripts]=useState(DEFAULT_SCRIPTS);
   const[editing,setEditing]=useState(false);
-  const[syncStatus,setSyncStatus]=useState("loading"); // loading|saved|saving|error|local
   const saveTimer=useRef(null);
+  const syncRef=useRef(null);
+  const setSync=(status)=>{if(syncRef.current){const colors={loading:"#F59E0B",saving:"#F59E0B",saved:"#10B981",error:"#EF4444",local:"#3B82F6"};const labels={loading:"Carregando...",saving:"Salvando...",saved:"Salvo na nuvem",error:"Erro ao salvar",local:"Salvo local"};syncRef.current.querySelector(".sd").style.background=colors[status];syncRef.current.querySelector(".sd").style.animation=status==="saving"?"pulse 1s infinite":"none";syncRef.current.querySelector(".sl").textContent=labels[status]}};
 
   // LOAD: Supabase first, fallback window.storage
   useEffect(()=>{(async()=>{
@@ -87,7 +88,7 @@ export default function App(){
       }
       const ss=await supaRead(2);
       if(ss)loadedScripts={...DEFAULT_SCRIPTS,...ss};
-      if(source==="supabase")setSyncStatus("saved");
+      if(source==="supabase")setSync("saved");
     }catch(e){
       // Fallback: window.storage
       try{
@@ -98,7 +99,7 @@ export default function App(){
           if(r2&&r2.value)loadedScripts={...DEFAULT_SCRIPTS,...JSON.parse(r2.value)};
         }
       }catch(e2){}
-      setSyncStatus(source==="local"?"local":"saved");
+      setSync(source==="local"?"local":"saved");
     }
     setData(loaded);setScripts(loadedScripts);setOk(true);
   })()},[]);
@@ -108,13 +109,13 @@ export default function App(){
     if(!ok)return;
     if(saveTimer.current)clearTimeout(saveTimer.current);
     saveTimer.current=setTimeout(async()=>{
-      setSyncStatus("saving");
+      setSync("saving");
       try{
         await supaWrite(1,data);
         await supaWrite(2,scripts);
-        setSyncStatus("saved");
+        setSync("saved");
       }catch(e){
-        try{if(window.storage){await window.storage.set("use-imob-v4",JSON.stringify(data));await window.storage.set("use-scripts-v1",JSON.stringify(scripts));setSyncStatus("local")}}catch(e2){setSyncStatus("error")}
+        try{if(window.storage){await window.storage.set("use-imob-v4",JSON.stringify(data));await window.storage.set("use-scripts-v1",JSON.stringify(scripts));setSync("local")}}catch(e2){setSync("error")}
       }
     },3000);
   },[data,scripts,ok]);
@@ -139,12 +140,12 @@ export default function App(){
   const exportXLSX=()=>{const strip=s=>(s||"").replace(/<[^>]*>/g,"");const rows=data.filter(d=>d.pri!=="X").sort((a,b)=>(a.ordem||999)-(b.ordem||999)).map(d=>({Prio:d.pri,Nome:d.nome,Status:gs(d.status).l,Dist:d.dist,Bairro:d.bairro,Tel:d.tel,Endereco:d.endereco,CRECI:d.creci,Rating:d.rating,Contato:d.contato,Interesse:d.interesse,Atendimento:d.acesso,Resumo:strip(d.plaudResumo),Obs:strip(d.obs)}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Imobiliarias");XLSX.writeFile(wb,`tracker-${new Date().toISOString().slice(0,10)}.xlsx`)};
 
   // Sync indicator
-  const SyncDot=()=>{const colors={loading:"#F59E0B",saving:"#F59E0B",saved:"#10B981",error:"#EF4444",local:"#3B82F6"};const labels={loading:"Carregando...",saving:"Salvando...",saved:"Salvo na nuvem",error:"Erro ao salvar",local:"Salvo local"};return<div style={{display:"flex",alignItems:"center",gap:4}} title={labels[syncStatus]}><div style={{width:6,height:6,borderRadius:"50%",background:colors[syncStatus],animation:syncStatus==="saving"?"pulse 1s infinite":""}} /><span style={{fontSize:9,color:P.steelDark}}>{labels[syncStatus]}</span><style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style></div>};
+  const SyncDot=()=><div ref={syncRef} style={{display:"flex",alignItems:"center",gap:4}}><div className="sd" style={{width:6,height:6,borderRadius:"50%",background:"#F59E0B"}} /><span className="sl" style={{fontSize:9,color:P.steelDark}}>Carregando...</span><style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style></div>;
 
   // UI
   const Pill=({active,color,children,onClick})=><button onClick={onClick} style={{padding:mob?"4px 8px":"5px 12px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:active?600:400,border:active?`2px solid ${color}`:`1px solid ${P.steelLight}`,background:active?color+"14":P.white,color:active?color:P.steel}}>{children}</button>;
   const BtnGroup=({items,field,row})=><div style={{display:"flex",gap:mob?3:5,flexWrap:"wrap"}}>{items.map(o=><button key={o.v} onClick={()=>u(row.id,field,o.v)} style={{padding:mob?"5px 8px":"6px 12px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:row[field]===o.v?`2px solid ${o.c}`:`1px solid ${P.steelLight}`,background:row[field]===o.v?o.c+"14":P.white,color:row[field]===o.v?o.c:P.steelDark,fontWeight:row[field]===o.v?600:400}}>{o.l}</button>)}</div>;
-  const Inp=({f,row,ph,style:sx})=><input value={row[f]||""} onChange={e=>u(row.id,f,e.target.value)} placeholder={ph} style={{width:"100%",padding:"8px 12px",borderRadius:6,border:`1px solid ${P.steelLight}`,fontSize:12,fontFamily:"inherit",boxSizing:"border-box",background:P.white,outline:"none",color:P.black,...sx}} onFocus={e=>e.target.style.borderColor=P.black} onBlur={e=>e.target.style.borderColor=P.steelLight}/>;
+  const Inp=({f,row,ph,style:sx})=><input key={row.id+"-"+f} defaultValue={row[f]||""} onBlur={e=>{u(row.id,f,e.target.value);e.target.style.borderColor=P.steelLight}} placeholder={ph} style={{width:"100%",padding:"8px 12px",borderRadius:6,border:`1px solid ${P.steelLight}`,fontSize:12,fontFamily:"inherit",boxSizing:"border-box",background:P.white,outline:"none",color:P.black,...sx}} onFocus={e=>e.target.style.borderColor=P.black}/>;
   const Label=({children})=><div style={{fontSize:10,color:P.steelDark,marginBottom:6,textTransform:"uppercase",letterSpacing:1.5,fontWeight:600}}>{children}</div>;
   const Section=({title,children,accent})=><div style={{background:P.white,padding:mob?14:18,borderRadius:8,marginBottom:mob?10:14,border:`1px solid ${P.steelLight}`,borderLeft:accent?`3px solid ${accent}`:`1px solid ${P.steelLight}`}}><Label>{title}</Label><div style={{marginTop:mob?8:10}}>{children}</div></div>;
   const Row2=({children})=><div style={{display:"flex",gap:mob?6:10,flexDirection:mob?"column":"row"}}>{children}</div>;
