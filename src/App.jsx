@@ -1,313 +1,204 @@
-import { useState, useEffect, useMemo } from "react";
-import { supabase } from "./supabase";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 
-var ALL_DATA = [
-  { id: 1, pri: "A", ordem: 1, nome: "R2 Flats", tel: "(11) 3388-5151", dist: "1.0km", bairro: "Moema", endereco: "Av. Jandira, 257, cj. 111 - Moema", foco: "Flats/Studios", insta: "r2flats_", site: "r2flats.com.br", creci: "23488-J-SP", rating: "--", avaliacoes: "--", descricao: "Especialista em flats desde 2012. ~994 imoveis no ZAP. Foco 100% compactos.", motivo: "TOP 1. Foco 100% flats/studios, core Moema, desde 2012." },
-  { id: 2, pri: "A", ordem: 2, nome: "Adriano Silva Imoveis", tel: "(11) 5053-1790", dist: "1.2km", bairro: "Moema", endereco: "Av. Moema, 765 - Moema", foco: "Zona Sul 15+ anos", insta: "adrianosilvaimoveis", site: "adrianosilvaimoveis.com.br", creci: "20280", rating: "4.6", avaliacoes: "5", descricao: "15+ anos Moema. 11-50 func. Juridico proprio. Tem imovel na Al. Anapurus.", motivo: "TOP 2. Maior estrutura local, 15+ anos." },
-  { id: 3, pri: "A", ordem: 3, nome: "MJ Imoveis", tel: "(11) 5051-9563", dist: "1.3km", bairro: "Moema", endereco: "Av. Sabia, 205 - Moema", foco: "Moema 39 anos", insta: "mjimoveisoficial", site: "mjimoveis.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Desde 1986 (39 anos). 2a geracao familiar.", motivo: "39 anos de Moema. Micro, 2a geracao." },
-  { id: 4, pri: "A", ordem: 4, nome: "Coelho e Lima", tel: "(11) 5052-3907", dist: "1.2km", bairro: "Moema", endereco: "Av. Moema, 667 - Moema", foco: "Moema/Brooklin", insta: "coelhoelimaimoveis", site: "coelhoelima.com.br", creci: "--", rating: "4.4", avaliacoes: "12", descricao: "Compra, venda, locacao e adm. 718 imoveis.", motivo: "1.2km, micro, 4.4 rating." },
-  { id: 5, pri: "A", ordem: 5, nome: "Taurus Imoveis", tel: "(11) 4580-4647", dist: "1.3km", bairro: "Moema", endereco: "R. Grauna, 290 - Moema", foco: "Moema", insta: "taurusimoveis", site: "taurusimoveis.com", creci: "--", rating: "--", avaliacoes: "1", descricao: "Apenas 1 avaliacao.", motivo: "1.3km. Validar se ativa." },
-  { id: 6, pri: "A", ordem: 6, nome: "House Moema", tel: "(11) 98086-3000", dist: "940m", bairro: "Moema", endereco: "Al. dos Maracatins, 426 - Moema", foco: "Local Moema", insta: "housemoema", site: "housemoema.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Micro, core Moema. Tel celular = dono acessivel.", motivo: "Micro, 940m. Dono direto." },
-  { id: 7, pri: "A", ordem: 7, nome: "Sergio Rabelo Imoveis", tel: "(11) 2198-5555", dist: "1.4km", bairro: "Moema", endereco: "Av. Moema, 546 - Moema", foco: "Moema", insta: "sergio_rabeloo", site: "sergiorabeloimoveis.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Core Moema. Dono no nome.", motivo: "Micro, 1.4km, dono no nome." },
-  { id: 8, pri: "A", ordem: 8, nome: "HGB Imoveis", tel: "Ver site", dist: "1.8km", bairro: "Moema", endereco: "Av. Macuco, 726 - Moema", foco: "Moema", insta: "hgbimoveis", site: "hgbimoveis.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Core Moema. Pouca info online.", motivo: "Micro, 1.8km. Buscar tel no site." },
-  { id: 9, pri: "A", ordem: 9, nome: "Silva Ramos Imoveis", tel: "(11) 5051-2955", dist: "850m", bairro: "Indianopolis", endereco: "Av. Moema, 265, cj. 134", foco: "Indianopolis/Moema", insta: "", site: "silva-ramos.com", creci: "--", rating: "--", avaliacoes: "--", descricao: "Horario comercial. Escritorio real.", motivo: "Micro tradicional." },
-  { id: 10, pri: "A", ordem: 10, nome: "Imoveis PRO", tel: "Ver site", dist: "1.3km", bairro: "Moema", endereco: "Moema (endereco a confirmar)", foco: "Investidor?", insta: "imoveispro", site: "imoveispro.com.br", creci: "--", rating: "5.0", avaliacoes: "--", descricao: "Endereco vago. 5.0 Rating.", motivo: "5.0 rating. Validar escritorio." },
-  { id: 11, pri: "A", ordem: 11, nome: "Anglo Americana Imoveis", tel: "(11) 3887-4555", dist: "1.7km", bairro: "Moema", endereco: "Av. Rep. do Libano, 1190", foco: "Moema", insta: "anglo_americana_imoveis", site: "angloamericana.com.br", creci: "--", rating: "5.0", avaliacoes: "4", descricao: "Horario estruturado. 5.0 rating.", motivo: "5.0 rating, horario profissional." },
-  { id: 12, pri: "A", ordem: 12, nome: "REMAX Front", tel: "Ver site", dist: "810m", bairro: "Moema", endereco: "Av. Miruna, 561 - Moema", foco: "Franquia", insta: "remaxfront", site: "remaxfront.usesquare.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Franquia REMAX.", motivo: "810m. REMAX + Moema." },
-  { id: 13, pri: "A", ordem: 13, nome: "Vila Moema Imoveis", tel: "(11) 98206-8551", dist: "~Moema", bairro: "Moema", endereco: "Moema (sem endereco)", foco: "Local", insta: "vilamoemaimoveis", site: "vilamoema.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Sem endereco. Tel celular.", motivo: "Tel celular = dono direto." },
-  { id: 14, pri: "C", ordem: 14, nome: "MyBroker", tel: "Ver site", dist: "2.9km", bairro: "V.Olimpia", endereco: "Av. Dr. Cardoso de Melo, 878", foco: "Boutique", insta: "mybroker.sp", site: "mybroker.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Boutique Vila Olimpia.", motivo: "Fora do raio (2.9km)." },
-  { id: 15, pri: "B", ordem: 15, nome: "Mello Imoveis", tel: "(11) 2578-4183", dist: "1.2km", bairro: "Indianopolis", endereco: "Av. Indianopolis, 3000", foco: "Misto", insta: "mello_imoveis", site: "melloimoveis3000.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Micro, adjacente.", motivo: "Micro, 1.2km. 2a rodada." },
-  { id: 16, pri: "A", ordem: 16, nome: "Planal Imoveis", tel: "(11) 2276-3844", dist: "850m", bairro: "P.Paulista", endereco: "Al. dos Tupinas, 559", foco: "Misto", insta: "planal_imoveis", site: "planalimoveis.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Micro em Planalto Paulista.", motivo: "850m! Muito perto." },
-  { id: 17, pri: "B", ordem: 17, nome: "Lello Imoveis Moema", tel: "(11) 5095-5900", dist: "1.5km", bairro: "Moema", endereco: "Al. dos Nhambiquaras, 1045", foco: "Rede media", insta: "lelloimoveis", site: "lelloimoveis.com.br", creci: "--", rating: "4.5", avaliacoes: "62", descricao: "Rede media (15-30 corr.).", motivo: "Rede media, boa reputacao." },
-  { id: 18, pri: "B", ordem: 18, nome: "Leardi Moema Indios", tel: "", dist: "1.7km", bairro: "Moema", endereco: "Al. dos Jurupis, 455", foco: "Rede media", insta: "leardi.official", site: "moemaindios214.leardi.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Rede media/grande.", motivo: "Rede media/grande." },
-  { id: 19, pri: "A", ordem: 19, nome: "Casa 192", tel: "(11) 5042-1000", dist: "1.0km", bairro: "Campo Belo", endereco: "R. Antonio Comparato, 192", foco: "Misto", insta: "casa192_imoveis", site: "casa192.com", creci: "--", rating: "--", avaliacoes: "--", descricao: "Campo Belo, dentro do raio.", motivo: "1.0km. Campo Belo adjacente." },
-  { id: 20, pri: "B", ordem: 20, nome: "Moema Imoveis e Adm.", tel: "(11) 5051-4311", dist: "3.3km", bairro: "Ibirapuera", endereco: "Av. Rep. do Libano, 2254", foco: "Administracao", insta: "moemaimoveisltda", site: "moemaimoveis.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Desde 1969. Adm no nome.", motivo: "2.7km fora do raio, MAS desde 1969." },
-  { id: 21, pri: "B", ordem: 21, nome: "Casas Moema", tel: "(11) 98264-4230", dist: "~Moema", bairro: "Moema", endereco: "Moema (sem endereco)", foco: "Residencial", insta: "casasmoema", site: "casasmoema.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Foco residencial.", motivo: "Foco residencial." },
-  { id: 22, pri: "B", ordem: 22, nome: "Ibirapuera Imoveis", tel: "", dist: "2.5km", bairro: "Ibirapuera", endereco: "Ibirapuera (sem endereco)", foco: "Misto", insta: "", site: "ibirapueraimoveis.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Sem endereco, sem telefone.", motivo: "Sem contato." },
-  { id: 23, pri: "C", ordem: 23, nome: "Moema Vitoria Imoveis", tel: "(11) 5103-0300", dist: "3.3km", bairro: "Cid.Moncoes", endereco: "Av. Pe. A.J. dos Santos, 1282", foco: "Misto", insta: "moemavitoriaimoveis", site: "moemavitoria.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Cidade Moncoes, 3.3km.", motivo: "Fora do raio (3.3km)." },
-  { id: 24, pri: "A", ordem: 24, nome: "SP House Imoveis", tel: "(11) 3554-3676", dist: "1.3km", bairro: "P.Paulista", endereco: "Av. Jose M. Whitaker, 890", foco: "Misto", insta: "sphouseimoveis", site: "sphouseimoveis.com", creci: "--", rating: "--", avaliacoes: "--", descricao: "Planalto Paulista.", motivo: "1.3km. Adjacente." },
-  { id: 25, pri: "C", ordem: 25, nome: "Proprie Imoveis", tel: "(11) 4545-5000", dist: "2.9km", bairro: "Brooklin", endereco: "Brooklin Paulista", foco: "Misto", insta: "proprieimoveis", site: "proprie.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Brooklin, 2.9km.", motivo: "Fora do raio, Brooklin." },
-  { id: 26, pri: "X", ordem: 26, nome: "Lopes Elite", tel: "", dist: "2.2km", bairro: "Indianopolis", endereco: "Av. Ibirapuera, 2033", foco: "Rede grande", insta: "lopeselitemoema", site: "elite.lopes.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Rede Lopes.", motivo: "Diretriz Amaral: esquecer Lopes." },
-  { id: 27, pri: "X", ordem: 27, nome: "Lopes Prime Moema", tel: "", dist: "1.1km", bairro: "Moema", endereco: "Av. Agami, 264 - Moema", foco: "Rede grande", insta: "lopesprime", site: "lopesprime.com.br", creci: "--", rating: "--", avaliacoes: "--", descricao: "Rede Lopes.", motivo: "Diretriz Amaral: Lopes." },
-];
+// Supabase config
+const SUPA_URL = "https://zraoshhggyppziynptci.supabase.co";
+const SUPA_KEY = "sb_publishable_4X0hOnvWaKwPeobR31tgQw_Se5aO1J_";
+const SUPA_HEADERS = { apikey: SUPA_KEY, Authorization: `Bearer ${SUPA_KEY}`, "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates" };
 
-var DEFS = { status: "pendente", visita: "", horario: "", local: "", obs: "", investidor: "", compacto: "", corretores: "", parceria: "", contato: "", contatoCargo: "", plaud: "", plaudResumo: "", interesse: "", acesso: "", concorrente: "", visitaContato: "", visitaCargo: "", escritorio: "", corretoresPresentes: "", carteiraConfirmada: "", entendeuSDR: "", interesseReal: "", proximoPasso: "", decisao: "", resumoVisita: "" };
-
-var STS = [
-  { v: "pendente", l: "Pendente", c: "#999" },
-  { v: "ligou", l: "Ligou", c: "#3B82F6" },
-  { v: "pediu_email", l: "Pediu email", c: "#6366F1" },
-  { v: "followup", l: "Retornar", c: "#0EA5E9" },
-  { v: "agendou", l: "Agendou visita", c: "#F59E0B" },
-  { v: "visitou", l: "Visitou", c: "#8B5CF6" },
-  { v: "cadastrou", l: "Cadastrou", c: "#10B981" },
-  { v: "descartou", l: "Sem fit", c: "#EF4444" },
-];
-
-var CF = ["dist", "motivo", "pri", "ordem", "descricao", "endereco", "nome", "tel", "bairro", "foco", "insta", "site", "creci", "rating", "avaliacoes"];
-
-function initData() {
-  return ALL_DATA.map(function(d) { return Object.assign({}, DEFS, d); });
+async function supaRead(id) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/imobiliarias?id=eq.${id}&select=data`, { headers: SUPA_HEADERS });
+  if (!r.ok) throw new Error("Supabase read fail");
+  const rows = await r.json();
+  return rows.length > 0 ? rows[0].data : null;
+}
+async function supaWrite(id, data) {
+  const r = await fetch(`${SUPA_URL}/rest/v1/imobiliarias`, { method: "POST", headers: SUPA_HEADERS, body: JSON.stringify({ id, data, updated_at: new Date().toISOString() }) });
+  if (!r.ok) throw new Error("Supabase write fail");
 }
 
-export default function App() {
-  var [data, setData] = useState(initData);
-  var [exp, setExp] = useState(null);
-  var [tab, setTab] = useState("tracker");
-  var [filt, setFilt] = useState("A");
-  var [ok, setOk] = useState(false);
-  var [saving, setSaving] = useState(false);
-  var [imp, setImp] = useState("");
+const D = [
+  [1,"A",1,"R2 Flats","(11) 3388-5151","1.0km","Moema","Av. Jandira, 257, cj. 111","Flats/Studios","r2flats_","r2flats.com.br","23488-J-SP","—","—","Flats desde 2012. ~994 imóveis. Foco 100% compactos.","TOP 1. Foco 100% flats/studios."],
+  [2,"A",2,"Adriano Silva Imóveis","(11) 5053-1790","1.2km","Moema","Av. Moema, 765","Zona Sul 15+a","adrianosilvaimoveis","adrianosilvaimoveis.com.br","20280","4.6","5","15+ anos. 11-50 func. Imóvel na Al. Anapurus. 4.9k seg.","TOP 2. 15+ anos, conhece a rua do empreendimento."],
+  [3,"A",3,"MJ Imóveis","(11) 5051-9563","1.3km","Moema","Av. Sabiá, 205","Moema 39a","mjimoveisoficial","mjimoveis.com.br","—","—","—","Desde 1986. 2a geração familiar.","39 anos de Moema. Micro."],
+  [4,"A",4,"Coelho & Lima","(11) 5052-3907","1.2km","Moema","Av. Moema, 667","Moema/Brooklin","coelhoelimaimoveis","coelhoelima.com.br","—","4.4","12","Venda, locação, adm. 718 imóveis.","1.2km, 4.4 rating."],
+  [5,"A",5,"Taurus Imóveis","(11) 4580-4647","1.3km","Moema","R. Graúna, 290","Moema","taurusimoveis","taurusimoveis.com","—","—","1","1 avaliação. Validar se ativa.","1.3km. Validar."],
+  [6,"A",6,"House Moema","(11) 98086-3000","940m","Moema","Al. Maracatins, 426","Local","housemoema","housemoema.com.br","—","—","—","Micro. Tel celular = dono.","940m. Dono direto."],
+  [7,"A",7,"Sergio Rabelo","(11) 2198-5555","1.4km","Moema","Av. Moema, 546","Moema","sergio_rabeloo","sergiorabeloimoveis.com.br","—","—","—","Dono no nome.","Micro, 1.4km."],
+  [8,"A",8,"HGB Imóveis","Ver site","1.8km","Moema","Av. Macuco, 726","Moema","hgbimoveis","hgbimoveis.com.br","—","—","—","Pouca info online.","1.8km. Buscar tel."],
+  [9,"A",9,"Silva Ramos","(11) 5051-2955","850m","Indianópolis","Av. Moema, 265 cj134","Indianópolis","—","silva-ramos.com","—","—","—","Horário comercial. Escritório real.","Micro tradicional."],
+  [10,"A",10,"Imóveis PRO","Ver site","1.3km","Moema","Moema (confirmar)","Investidor?","imoveispro","imoveispro.com.br","—","5.0","—","Endereço vago. 5.0 Rating.","5.0 rating."],
+  [11,"A",11,"Anglo Americana","(11) 3887-4555","1.7km","Moema","Av. Rep. Líbano, 1190","Moema","anglo_americana_imoveis","angloamericana.com.br","—","5.0","4","Horário estruturado.","5.0 rating."],
+  [12,"A",12,"RE/MAX Front","Ver site","810m","Moema","Av. Miruna, 561","Franquia","remaxfront","remaxfront.usesquare.com.br","—","—","—","Franquia RE/MAX.","810m. RE/MAX."],
+  [13,"A",13,"Vila Moema","(11) 98206-8551","~Moema","Moema","Sem endereço","Local","vilamoemaimoveis","vilamoema.com.br","—","—","—","Sem endereço. Tel celular.","Dono direto."],
+  [14,"C",14,"MyBroker","Ver site","2.9km","V.Olímpia","Av. Cardoso de Melo, 878","Boutique","mybroker.sp","mybroker.com.br","—","—","—","Vila Olímpia/Itaim.","Fora do raio."],
+  [15,"B",15,"Mello Imóveis","(11) 2578-4183","1.2km","Indianópolis","Av. Indianópolis, 3000","Misto","mello_imoveis","melloimoveis3000.com.br","—","—","—","Micro, adjacente.","Segunda rodada."],
+  [16,"A",16,"Planal Imóveis","(11) 2276-3844","850m","P.Paulista","Al. Tupinás, 559","Misto","planal_imoveis","planalimoveis.com.br","—","—","—","Micro Planalto Paulista.","850m! Perto."],
+  [17,"B",17,"Lello Imóveis","(11) 5095-5900","1.5km","Moema","Al. Nhambiquaras, 1045","Rede média","lelloimoveis","lelloimoveis.com.br","—","4.5","62","Rede média. 62 avaliações.","Rede média."],
+  [18,"B",18,"Leardi Moema","—","1.7km","Moema","Al. Jurupis, 455","Rede média","leardi.official","moemaindios214.leardi.com.br","—","—","—","Rede média/grande.","Rede média."],
+  [19,"A",19,"Casa 192","(11) 5042-1000","1.0km","C.Belo","R. Ant. Comparato, 192","Misto","casa192_imoveis","casa192.com","—","—","—","Campo Belo, dentro do raio.","1.0km."],
+  [20,"B",20,"Moema Imóveis Adm","(11) 5051-4311","3.3km","Ibirapuera","Av. Rep. Líbano, 2254","Administração","moemaimoveisltda","moemaimoveis.com.br","—","—","—","Desde 1969. 'Adm.' no nome.","Fora do raio MAS 1969."],
+  [21,"B",21,"Casas Moema","(11) 98264-4230","~Moema","Moema","Sem endereço","Residencial","casasmoema","casasmoema.com.br","—","—","—","Foco residencial.","Foco residencial."],
+  [22,"B",22,"Ibirapuera Imóveis","—","2.5km","Ibirapuera","Sem endereço","Misto","—","ibirapueraimoveis.com.br","—","—","—","Sem contato.","Sem contato."],
+  [23,"C",23,"Moema Vitória","(11) 5103-0300","3.3km","Cid.Monções","Av. Pe. Santos, 1282","Misto","moemavitoriaimoveis","moemavitoria.com.br","—","—","—","3.3km.","Fora do raio."],
+  [24,"A",24,"SP House","(11) 3554-3676","1.3km","P.Paulista","Av. Whitaker, 890","Misto","sphouseimoveis","sphouseimoveis.com","—","—","—","Planalto Paulista.","1.3km. Adjacente."],
+  [25,"C",25,"Propriê","(11) 4545-5000","2.9km","Brooklin","Brooklin Paulista","Misto","proprieimoveis","proprie.com.br","—","—","—","Brooklin 2.9km.","Fora do raio."],
+  [26,"X",26,"Lopes Elite","—","2.2km","Indianópolis","Av. Ibirapuera, 2033","Rede grande","lopeselitemoema","elite.lopes.com.br","—","—","—","Rede Lopes.","Diretriz Amaral."],
+  [27,"X",27,"Lopes Prime","—","1.1km","Moema","Av. Agami, 264","Rede grande","lopesprime","lopesprime.com.br","—","—","—","Rede Lopes.","Diretriz Amaral."],
+];
 
-  // Load from Supabase
-  useEffect(function() {
-    async function load() {
-      try {
-        var resp = await supabase.from("imobiliarias").select("*");
-        if (resp.data && resp.data.length > 0) {
-          var saved = resp.data.map(function(row) { return row.data; });
-          var merged = ALL_DATA.map(function(def) {
-            var s = saved.find(function(x) { return x.id === def.id; });
-            if (!s) { return Object.assign({}, DEFS, def); }
-            var result = Object.assign({}, DEFS, def, s);
-            CF.forEach(function(f) { result[f] = def[f]; });
-            return result;
-          });
-          setData(merged);
-        }
-      } catch (e) {
-        console.log("Load error:", e);
+const ALL=D.map(d=>({id:d[0],pri:d[1],ordem:d[2],nome:d[3],tel:d[4],dist:d[5],bairro:d[6],endereco:d[7],foco:d[8],insta:d[9],site:d[10],creci:d[11],rating:d[12],avaliacoes:d[13],descricao:d[14],motivo:d[15]}));
+const DF={status:"pendente",visita:"",horario:"",local:"",obs:"",investidor:"",compacto:"",corretores:"",parceria:"",contato:"",contatoCargo:"",plaud:"",plaudResumo:"",interesse:"",acesso:"",concorrente:"",visitaContato:"",visitaCargo:"",escritorio:"",corretoresPresentes:"",carteiraConfirmada:"",entendeuSDR:"",interesseReal:"",proximoPasso:"",decisao:"",resumoVisita:"",nome:"",tel:"",dist:"",bairro:"",endereco:"",foco:"",insta:"",site:"",creci:"",rating:"",avaliacoes:"",descricao:"",motivo:"",pri:"A",ordem:0};
+const SS=[{v:"pendente",l:"Pendente",c:"#BCBFCC"},{v:"ligou",l:"Ligou",c:"#3B82F6"},{v:"pediu_email",l:"Pediu email",c:"#8B5CF6"},{v:"followup",l:"Retornar",c:"#0EA5E9"},{v:"agendou",l:"Agendou visita",c:"#F59E0B"},{v:"visitou",l:"Visitou",c:"#EC4899"},{v:"cadastrou",l:"Cadastrou",c:"#10B981"},{v:"descartou",l:"Sem fit",c:"#EF4444"}];
+const P={black:"#0a0a0a",white:"#ffffff",steel:"#BCBFCC",steelLight:"#E8E9ED",steelDark:"#8A8D99",bg:"#F4F4F6"};
+const DEFAULT_SCRIPTS={ligAbertura:"Oi [nome], Bruno Trolezi, responsavel comercial da Use Incorporadora. A Use nasceu de um spin-off de uma grande incorporadora carioca de 30+ anos, mas e uma estrutura nova em SP. Estamos ampliando nossa base de parceiros. Temos um empreendimento em Moema, 75% vendido. Gostaria de visitar o teu escritorio, bater um papo.",ligPerguntas:"1. Investidor ou morador?\n2. Faixa de ticket?\n3. Lancamentos ou revenda?\n4. Quantos corretores?",ligFechamento:'[3 sim] "Posso passar ai na [dia]? Uns 20 minutos."\n[2 sim] "Posso mandar um resumo por WhatsApp?"\n[1 sim] "Talvez pra esse nao. Pipeline forte em SP - quem sabe num proximo."',ligFuncionou:"",visAbertura:"Prazer, Bruno Trolezi. Obrigado por me receber.",visRoteiro:"1. Conhecer a imobiliaria\n2. Explicar modelo SDR\n3. Mostrar numeros: 75% vendido, R$14.600/m2\n4. Comissao: PJ 4,2% / PF 3,6%\n5. Proximo passo: cadastro + treino",visProduto:"use.moema - 53 studios, Al. Anapurus 1216\nR$14.600/m2 vs mercado R$20-22k\n75% vendido\nCalper RJ: 30 anos, 15.000 unidades",visFechamento:'[Quer avancar] "Vou mandar material e marcamos treino."\n[Talvez] "Mando o book por WhatsApp."\n[So educado] "Obrigado pelo tempo."',visFuncionou:""};
+
+function useIsMobile(bp=768){const[m,setM]=useState(typeof window!=="undefined"?window.innerWidth<bp:false);useEffect(()=>{const h=()=>setM(window.innerWidth<bp);window.addEventListener("resize",h);return()=>window.removeEventListener("resize",h)},[bp]);return m}
+
+function RichEdit({value,onChange,placeholder,minH}){const ref=useRef(null);const init=useRef(false);const lastVal=useRef(value);useEffect(()=>{if(ref.current&&!init.current){ref.current.innerHTML=value||"";init.current=true}},[]);useEffect(()=>{if(ref.current&&value!==lastVal.current){ref.current.innerHTML=value||"";lastVal.current=value}},[value]);const cmd=(c,v)=>{document.execCommand(c,false,v);ref.current&&ref.current.focus()};const handle=()=>{if(ref.current){lastVal.current=ref.current.innerHTML;onChange(ref.current.innerHTML)}};return(<div style={{border:`1px solid ${P.steelLight}`,borderRadius:6,overflow:"hidden",background:P.white}}><div style={{display:"flex",alignItems:"center",gap:2,padding:"4px 8px",borderBottom:`1px solid ${P.steelLight}`,background:"#FAFAFA",flexWrap:"wrap"}}>{[{l:"B",c:"bold",s:{fontWeight:700}},{l:"I",c:"italic",s:{fontStyle:"italic"}},{l:"U",c:"underline",s:{textDecoration:"underline"}},{l:"S",c:"strikeThrough",s:{textDecoration:"line-through"}}].map(t=><button key={t.c} onMouseDown={e=>{e.preventDefault();cmd(t.c)}} style={{width:26,height:26,border:"none",background:"transparent",cursor:"pointer",borderRadius:3,fontSize:12,fontFamily:"inherit",color:P.black,display:"flex",alignItems:"center",justifyContent:"center",...t.s}}>{t.l}</button>)}<div style={{width:1,height:18,background:P.steelLight,margin:"0 4px"}}/>{["#FEF08A","#BBF7D0","#BFDBFE","#FBCFE8","#FED7AA"].map(c=><button key={c} onMouseDown={e=>{e.preventDefault();cmd("hiliteColor",c)}} style={{width:18,height:18,border:`1px solid ${P.steelLight}`,background:c,cursor:"pointer",borderRadius:3,margin:"0 1px"}}/>)}<button onMouseDown={e=>{e.preventDefault();cmd("removeFormat")}} style={{marginLeft:4,padding:"2px 6px",border:`1px solid ${P.steelLight}`,background:"transparent",cursor:"pointer",borderRadius:3,fontSize:10,fontFamily:"inherit",color:P.steelDark}}>Limpar</button></div><div ref={ref} contentEditable suppressContentEditableWarning onInput={handle} onBlur={handle} data-placeholder={placeholder} style={{padding:"10px 12px",minHeight:minH||80,fontSize:13,lineHeight:1.7,outline:"none",color:P.black,fontFamily:"inherit",overflowY:"auto",maxHeight:300}}/><style>{`[data-placeholder]:empty:before{content:attr(data-placeholder);color:${P.steelDark};font-style:italic;pointer-events:none}`}</style></div>)}
+
+export default function App(){
+  const mob=useIsMobile();
+  const[data,setData]=useState([]);
+  const[sel,setSel]=useState(null);
+  const[tab,setTab]=useState("tracker");
+  const[filt,setFilt]=useState("A");
+  const[ok,setOk]=useState(false);
+  const[imp,setImp]=useState("");
+  const[mobileView,setMobileView]=useState("list");
+  const[scriptTab,setScriptTab]=useState("ligacao");
+  const[scripts,setScripts]=useState(DEFAULT_SCRIPTS);
+  const[editing,setEditing]=useState(false);
+  const[syncStatus,setSyncStatus]=useState("loading"); // loading|saved|saving|error|local
+  const saveTimer=useRef(null);
+
+  // LOAD: Supabase first, fallback window.storage
+  useEffect(()=>{(async()=>{
+    let loaded=ALL.map(d=>({...DF,...d}));
+    let loadedScripts={...DEFAULT_SCRIPTS};
+    let source="default";
+    try{
+      const sd=await supaRead(1);
+      if(sd&&Array.isArray(sd)){
+        const merged=ALL.map(def=>{const s=sd.find(x=>x.id===def.id);if(!s)return{...DF,...def};return{...DF,...def,...s}});
+        const extras=sd.filter(s=>!ALL.find(d=>d.id===s.id));
+        loaded=[...merged,...extras.map(e=>({...DF,...e}))];
+        source="supabase";
       }
-      setOk(true);
+      const ss=await supaRead(2);
+      if(ss)loadedScripts={...DEFAULT_SCRIPTS,...ss};
+      if(source==="supabase")setSyncStatus("saved");
+    }catch(e){
+      // Fallback: window.storage
+      try{
+        if(window.storage){
+          const r=await window.storage.get("use-imob-v4");
+          if(r&&r.value){const saved=JSON.parse(r.value);const merged=ALL.map(def=>{const s=saved.find(x=>x.id===def.id);if(!s)return{...DF,...def};return{...DF,...def,...s}});const extras=saved.filter(s=>!ALL.find(d=>d.id===s.id));loaded=[...merged,...extras.map(e=>({...DF,...e}))];source="local"}
+          const r2=await window.storage.get("use-scripts-v1");
+          if(r2&&r2.value)loadedScripts={...DEFAULT_SCRIPTS,...JSON.parse(r2.value)};
+        }
+      }catch(e2){}
+      setSyncStatus(source==="local"?"local":"saved");
     }
-    load();
-  }, []);
+    setData(loaded);setScripts(loadedScripts);setOk(true);
+  })()},[]);
 
-  // Save to Supabase (debounced)
-  useEffect(function() {
-    if (!ok) { return; }
-    setSaving(true);
-    var timer = setTimeout(function() {
-      async function save() {
-        try {
-          var promises = data.map(function(item) {
-            return supabase.from("imobiliarias").upsert({ id: item.id, data: item, updated_at: new Date().toISOString() });
-          });
-          await Promise.all(promises);
-        } catch (e) {
-          console.log("Save error:", e);
-        }
-        setSaving(false);
+  // SAVE: debounced, Supabase first, fallback window.storage
+  useEffect(()=>{
+    if(!ok)return;
+    if(saveTimer.current)clearTimeout(saveTimer.current);
+    setSyncStatus("saving");
+    saveTimer.current=setTimeout(async()=>{
+      try{
+        await supaWrite(1,data);
+        await supaWrite(2,scripts);
+        setSyncStatus("saved");
+      }catch(e){
+        // Fallback
+        try{if(window.storage){await window.storage.set("use-imob-v4",JSON.stringify(data));await window.storage.set("use-scripts-v1",JSON.stringify(scripts));setSyncStatus("local")}}catch(e2){setSyncStatus("error")}
       }
-      save();
-    }, 1500);
-    return function() { clearTimeout(timer); };
-  }, [data, ok]);
+    },800);
+  },[data,scripts,ok]);
 
-  function upd(id, f, v) {
-    setData(function(p) {
-      return p.map(function(i) {
-        if (i.id === id) { return Object.assign({}, i, { [f]: v }); }
-        return i;
-      });
-    });
-  }
+  const u=useCallback((id,f,v)=>setData(p=>p.map(i=>i.id===id?{...i,[f]:v}:i)),[]);
+  const uScript=(f,v)=>setScripts(p=>({...p,[f]:v}));
+  const fil=data.filter(d=>filt==="all"?true:d.pri===filt).sort((a,b)=>(a.ordem||999)-(b.ordem||999));
+  const cnt=s=>data.filter(d=>d.status===s).length;
+  const ligs=data.filter(d=>d.status!=="pendente"&&d.pri!=="X").length;
+  const gs=s=>SS.find(x=>x.v===s)||SS[0];
+  const it=sel?data.find(d=>d.id===sel):null;
+  const selectItem=id=>{setSel(id);setEditing(false);if(mob)setMobileView("detail")};
+  const goBack=()=>setMobileView("list");
+  const priDot=p=>p==="A"?"#10B981":p==="B"?"#F59E0B":p==="C"?"#8B5CF6":"#EF4444";
+  const addNew=()=>{const mx=data.reduce((a,d)=>Math.max(a,d.id),0);const mo=data.reduce((a,d)=>Math.max(a,d.ordem||0),0);const n={...DF,id:mx+1,ordem:mo+1,nome:"Nova imobiliaria",pri:"A",status:"pendente"};setData(p=>[...p,n]);setSel(mx+1);setEditing(true);if(mob)setMobileView("detail")};
+  const addBulk=json=>{try{const items=JSON.parse(json);if(!Array.isArray(items)){alert("Precisa ser array");return}const mx=data.reduce((a,d)=>Math.max(a,d.id),0);const mo=data.reduce((a,d)=>Math.max(a,d.ordem||0),0);const nw=items.map((item,i)=>({...DF,...item,id:item.id||mx+1+i,ordem:item.ordem||mo+1+i,status:item.status||"pendente",pri:item.pri||"A"}));if(nw.some(n=>data.find(d=>d.id===n.id))){alert("IDs duplicados");return}setData(p=>[...p,...nw]);alert(`${nw.length} adicionadas!`)}catch(e){alert("JSON invalido")}};
+  const removeItem=id=>{if(confirm("Remover?")){setData(p=>p.filter(d=>d.id!==id));if(sel===id)setSel(null)}};
 
-  var filtered = data.filter(function(d) {
-    if (filt === "all") { return true; }
-    return d.pri === filt;
-  }).sort(function(a, b) { return a.ordem - b.ordem; });
+  const m=useMemo(()=>{const a=data.filter(d=>d.pri!=="X");const c=a.filter(d=>d.status!=="pendente");const pA=a.filter(d=>d.pri==="A");const ag=cnt("agendou"),vi=cnt("visitou"),ca=cnt("cadastrou");return{total:a.length,cont:c.length,pA:pA.length,pAc:pA.filter(d=>d.status!=="pendente").length,pAp:pA.filter(d=>d.status==="pendente").length,iS:c.filter(d=>d.interesse==="sim").length,iP:c.filter(d=>d.interesse==="parcial").length,iN:c.filter(d=>d.interesse==="nao").length,aP:c.filter(d=>d.acesso==="pro").length,aO:c.filter(d=>d.acesso==="ok").length,aR:c.filter(d=>d.acesso==="ruim").length,pe:cnt("pediu_email"),fu:cnt("followup"),sf:Math.max(cnt("descartou")-data.filter(d=>d.pri==="X").length,0),ag,vi,ca,tv:c.length>0?Math.round(((ag+vi+ca)/c.length)*100):0,ligs}},[data]);
 
-  function cnt(s) { return data.filter(function(d) { return d.status === s; }).length; }
-  var ligs = data.filter(function(d) { return d.status !== "pendente" && d.pri !== "X"; }).length;
-  function priE(p) { return p === "A" ? "\uD83D\uDFE2" : p === "B" ? "\uD83D\uDFE1" : p === "C" ? "\uD83D\uDD35" : "\u274C"; }
-  function gSt(s) { return STS.find(function(x) { return x.v === s; }) || STS[0]; }
+  const exportMD=()=>{const now=new Date().toISOString().slice(0,10);let md=`# Tracker use.moema\n> ${now}\n\n`;data.filter(d=>d.pri!=="X").sort((a,b)=>(a.ordem||999)-(b.ordem||999)).forEach(d=>{md+=`### ${d.nome} [${d.pri}] - ${gs(d.status).l}\n- ${d.dist} | ${d.bairro} | ${d.tel} | ${d.endereco}\n- CRECI: ${d.creci} | Rating: ${d.rating}\n`;if(d.contato)md+=`- Contato: ${d.contato}\n`;if(d.plaudResumo)md+=`- Resumo: ${(d.plaudResumo||"").replace(/<[^>]*>/g,"")}\n`;if(d.obs)md+=`- Obs: ${(d.obs||"").replace(/<[^>]*>/g,"")}\n`;md+="\n"});const b=new Blob([md],{type:"text/markdown"});const a=document.createElement("a");a.href=URL.createObjectURL(b);a.download=`tracker-${now}.md`;a.click()};
+  const exportXLSX=()=>{const strip=s=>(s||"").replace(/<[^>]*>/g,"");const rows=data.filter(d=>d.pri!=="X").sort((a,b)=>(a.ordem||999)-(b.ordem||999)).map(d=>({Prio:d.pri,Nome:d.nome,Status:gs(d.status).l,Dist:d.dist,Bairro:d.bairro,Tel:d.tel,Endereco:d.endereco,CRECI:d.creci,Rating:d.rating,Contato:d.contato,Interesse:d.interesse,Atendimento:d.acesso,Resumo:strip(d.plaudResumo),Obs:strip(d.obs)}));const ws=XLSX.utils.json_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"Imobiliarias");XLSX.writeFile(wb,`tracker-${new Date().toISOString().slice(0,10)}.xlsx`)};
 
-  var L = { fontSize: 10, color: "#999", marginBottom: 3, textTransform: "uppercase", letterSpacing: 0.5 };
+  // Sync indicator
+  const SyncDot=()=>{const colors={loading:"#F59E0B",saving:"#F59E0B",saved:"#10B981",error:"#EF4444",local:"#3B82F6"};const labels={loading:"Carregando...",saving:"Salvando...",saved:"Salvo na nuvem",error:"Erro ao salvar",local:"Salvo local"};return<div style={{display:"flex",alignItems:"center",gap:4}} title={labels[syncStatus]}><div style={{width:6,height:6,borderRadius:"50%",background:colors[syncStatus],animation:syncStatus==="saving"?"pulse 1s infinite":""}} /><span style={{fontSize:9,color:P.steelDark}}>{labels[syncStatus]}</span><style>{`@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}`}</style></div>};
 
-  function BtnGroup(props) {
-    return (
-      <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
-        {props.items.map(function(o) {
-          var active = props.item[props.field] === o.v;
-          return <button key={o.v} onClick={function() { upd(props.item.id, props.field, o.v); }} style={{ flex: 1, padding: "6px 3px", borderRadius: 6, fontSize: 11, cursor: "pointer", border: active ? "2px solid " + o.c : "1px solid #e5e5e5", background: active ? o.c + "15" : "#fff", color: active ? o.c : "#999", fontWeight: active ? 600 : 400, minWidth: 55 }}>{o.l}</button>;
-        })}
+  // UI
+  const Pill=({active,color,children,onClick})=><button onClick={onClick} style={{padding:mob?"4px 8px":"5px 12px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"inherit",fontWeight:active?600:400,border:active?`2px solid ${color}`:`1px solid ${P.steelLight}`,background:active?color+"14":P.white,color:active?color:P.steel}}>{children}</button>;
+  const BtnGroup=({items,field,row})=><div style={{display:"flex",gap:mob?3:5,flexWrap:"wrap"}}>{items.map(o=><button key={o.v} onClick={()=>u(row.id,field,o.v)} style={{padding:mob?"5px 8px":"6px 12px",borderRadius:4,fontSize:11,cursor:"pointer",fontFamily:"inherit",border:row[field]===o.v?`2px solid ${o.c}`:`1px solid ${P.steelLight}`,background:row[field]===o.v?o.c+"14":P.white,color:row[field]===o.v?o.c:P.steelDark,fontWeight:row[field]===o.v?600:400}}>{o.l}</button>)}</div>;
+  const Inp=({f,row,ph,style:sx})=><input value={row[f]||""} onChange={e=>u(row.id,f,e.target.value)} placeholder={ph} style={{width:"100%",padding:"8px 12px",borderRadius:6,border:`1px solid ${P.steelLight}`,fontSize:12,fontFamily:"inherit",boxSizing:"border-box",background:P.white,outline:"none",color:P.black,...sx}} onFocus={e=>e.target.style.borderColor=P.black} onBlur={e=>e.target.style.borderColor=P.steelLight}/>;
+  const Label=({children})=><div style={{fontSize:10,color:P.steelDark,marginBottom:6,textTransform:"uppercase",letterSpacing:1.5,fontWeight:600}}>{children}</div>;
+  const Section=({title,children,accent})=><div style={{background:P.white,padding:mob?14:18,borderRadius:8,marginBottom:mob?10:14,border:`1px solid ${P.steelLight}`,borderLeft:accent?`3px solid ${accent}`:`1px solid ${P.steelLight}`}}><Label>{title}</Label><div style={{marginTop:mob?8:10}}>{children}</div></div>;
+  const Row2=({children})=><div style={{display:"flex",gap:mob?6:10,flexDirection:mob?"column":"row"}}>{children}</div>;
+  const Fl=({children})=><div style={{flex:1}}>{children}</div>;
+
+  // DETAIL
+  const DetailPanel=({showBack})=>{
+    if(!it)return<div style={{display:"flex",alignItems:"center",justifyContent:"center",height:"100%",color:P.steel,fontSize:13}}>Selecione uma imobiliaria</div>;
+    const sq=["ligou","pediu_email","followup","agendou","visitou","cadastrou"].includes(it.status);
+    const sv=["agendou","visitou","cadastrou"].includes(it.status);
+    const spv=["visitou","cadastrou"].includes(it.status);
+    return(
+      <div style={{padding:mob?"16px":"24px 28px",overflowY:"auto",height:"100%",boxSizing:"border-box"}}>
+        {showBack&&<button onClick={goBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,color:P.steelDark,fontWeight:500,padding:"0 0 12px"}}>&#8592; Voltar</button>}
+        <div style={{display:"flex",alignItems:"center",gap:mob?8:12,marginBottom:6,flexWrap:"wrap"}}><div style={{width:10,height:10,borderRadius:"50%",background:priDot(it.pri),flexShrink:0}}/><h2 style={{fontSize:mob?16:20,fontWeight:700,margin:0,color:P.black}}>{it.nome}</h2><div style={{fontSize:10,fontWeight:600,padding:"3px 10px",borderRadius:4,background:gs(it.status).c+"14",color:gs(it.status).c,textTransform:"uppercase"}}>{gs(it.status).l}</div></div>
+        <div style={{fontSize:12,color:P.steelDark,marginBottom:mob?14:20,paddingLeft:mob?0:22}}>{it.dist} &middot; {it.bairro} &middot; {it.endereco}</div>
+        <div style={{display:"flex",gap:mob?6:8,marginBottom:mob?14:20,flexWrap:"wrap"}}>{it.tel&&it.tel!=="—"&&it.tel!=="Ver site"&&<a href={`tel:${it.tel.replace(/[^0-9+]/g,"")}`} style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,background:P.black,color:P.white,textDecoration:"none",fontWeight:600}}>{it.tel}</a>}{it.tel==="Ver site"&&<span style={{padding:"8px 16px",fontSize:12,borderRadius:6,background:"#FEF3C7",color:"#92400E",fontWeight:500}}>Buscar tel</span>}{it.insta&&it.insta!=="—"&&<a href={`https://instagram.com/${it.insta}`} target="_blank" rel="noopener" style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,border:`1px solid ${P.steelLight}`,color:P.black,textDecoration:"none",fontWeight:500,background:P.white}}>@{it.insta}</a>}{it.site&&it.site!=="—"&&<a href={`https://${it.site}`} target="_blank" rel="noopener" style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,border:`1px solid ${P.steelLight}`,color:P.black,textDecoration:"none",fontWeight:500,background:P.white}}>Site</a>}<a href={`https://www.google.com/maps/search/${encodeURIComponent((it.nome||"")+" "+(it.bairro||"")+" Sao Paulo")}`} target="_blank" rel="noopener" style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,border:`1px solid ${P.steelLight}`,color:P.black,textDecoration:"none",fontWeight:500,background:P.white}}>Maps</a></div>
+        <div style={{fontSize:12,color:P.steelDark,background:P.bg,padding:mob?12:14,borderRadius:8,marginBottom:4,lineHeight:1.7}}><span style={{color:P.black,fontWeight:500}}>Rating: {it.rating}</span> ({it.avaliacoes} av.) &middot; CRECI: {it.creci}<br/>{it.descricao}<br/><span style={{fontStyle:"italic"}}>{it.motivo}</span></div>
+        <div style={{display:"flex",justifyContent:"flex-end",marginBottom:14}}><button onClick={()=>setEditing(!editing)} style={{padding:"4px 12px",fontSize:10,color:editing?P.white:P.steelDark,background:editing?P.black:"transparent",border:`1px solid ${editing?P.black:P.steelLight}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit",fontWeight:500}}>{editing?"Fechar edicao":"Editar dados"}</button></div>
+        {editing&&<Section title="Editar dados" accent={P.steelDark}><div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:8}}><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Nome</div><Inp f="nome" row={it} ph="Nome"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Prioridade</div><div style={{display:"flex",gap:4}}>{["A","B","C","X"].map(p=><button key={p} onClick={()=>u(it.id,"pri",p)} style={{padding:"5px 12px",borderRadius:4,fontSize:11,fontWeight:it.pri===p?700:400,background:it.pri===p?priDot(p)+"20":P.white,color:it.pri===p?priDot(p):P.steelDark,border:it.pri===p?`2px solid ${priDot(p)}`:`1px solid ${P.steelLight}`,cursor:"pointer",fontFamily:"inherit"}}>{p}</button>)}</div></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Distancia</div><Inp f="dist" row={it} ph="1.2km"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Bairro</div><Inp f="bairro" row={it} ph="Bairro"/></div><div style={{gridColumn:mob?"1":"1/3"}}><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Endereco</div><Inp f="endereco" row={it} ph="Endereco"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Telefone</div><Inp f="tel" row={it} ph="(11) 0000-0000"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>CRECI</div><Inp f="creci" row={it} ph="CRECI"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Instagram</div><Inp f="insta" row={it} ph="usuario"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Site</div><Inp f="site" row={it} ph="site.com.br"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Rating</div><Inp f="rating" row={it} ph="4.5"/></div><div><div style={{fontSize:10,color:P.steelDark,marginBottom:2}}>Avaliacoes</div><Inp f="avaliacoes" row={it} ph="12"/></div></div></Section>}
+        <Section title="Contato" accent="#3B82F6"><Row2><Fl><Inp f="contato" row={it} ph="Nome"/></Fl><Fl><Inp f="contatoCargo" row={it} ph="Cargo"/></Fl></Row2></Section>
+        <Section title="Status" accent={gs(it.status).c}><div style={{display:"flex",flexWrap:"wrap",gap:mob?4:5}}>{SS.map(o=><Pill key={o.v} active={it.status===o.v} color={o.c} onClick={()=>u(it.id,"status",o.v)}>{o.l}</Pill>)}</div></Section>
+        {sq&&<Section title="Qualificacao" accent="#3B82F6"><div style={{display:"grid",gridTemplateColumns:mob?"1fr":"130px 1fr",gap:mob?"8px":"8px 12px",alignItems:mob?"start":"center"}}>{[["investidor","Investidor?","S/N/Parcial"],["compacto","Compacto?","S/N/Parcial"],["corretores","Num corretores","ex: 5"],["parceria","Parceria?","S/N/Talvez"],["concorrente","Concorrente?","S(qual?)/N"]].map(([k,l,p])=>(<React.Fragment key={k}>{!mob&&<span style={{fontSize:12,color:P.steelDark,fontWeight:500}}>{l}</span>}<Inp f={k} row={it} ph={mob?l:p}/></React.Fragment>))}</div></Section>}
+        {sq&&<Section title="Impressao" accent="#F59E0B"><div style={{marginBottom:12}}><div style={{fontSize:12,color:P.black,marginBottom:6,fontWeight:500}}>Se interessou?</div><BtnGroup items={[{v:"sim",l:"Sim",c:"#10B981"},{v:"parcial",l:"Parcial",c:"#F59E0B"},{v:"nao",l:"Nao",c:"#EF4444"},{v:"nc",l:"Nao consegui falar",c:P.steel}]} field="interesse" row={it}/></div><div><div style={{fontSize:12,color:P.black,marginBottom:6,fontWeight:500}}>Atendimento?</div><BtnGroup items={[{v:"pro",l:"Profissional",c:"#10B981"},{v:"ok",l:"Ok",c:"#F59E0B"},{v:"ruim",l:"Ruim",c:"#EF4444"}]} field="acesso" row={it}/></div></Section>}
+        {sv&&<Section title="Reuniao / Visita" accent="#F59E0B"><Row2><Fl><div style={{fontSize:10,color:P.steelDark,marginBottom:3}}>Data</div><input type="date" value={it.visita||""} onChange={e=>u(it.id,"visita",e.target.value)} style={{width:"100%",padding:"8px 12px",borderRadius:6,border:`1px solid ${P.steelLight}`,fontSize:12,boxSizing:"border-box",fontFamily:"inherit"}}/></Fl><Fl><div style={{fontSize:10,color:P.steelDark,marginBottom:3}}>Horario</div><input type="time" value={it.horario||""} onChange={e=>u(it.id,"horario",e.target.value)} style={{width:"100%",padding:"8px 12px",borderRadius:6,border:`1px solid ${P.steelLight}`,fontSize:12,boxSizing:"border-box",fontFamily:"inherit"}}/></Fl></Row2><div style={{marginTop:8}}><Inp f="local" row={it} ph="Local"/></div></Section>}
+        {spv&&<Section title="Avaliacao pos-visita" accent="#EC4899"><Row2><Fl><Inp f="visitaContato" row={it} ph="Reuniu com quem?"/></Fl><Fl><Inp f="visitaCargo" row={it} ph="Cargo"/></Fl></Row2>{[["escritorio","Escritorio",[{v:"estruturado",l:"Estruturado",c:"#10B981"},{v:"simples",l:"Simples",c:"#F59E0B"},{v:"sem",l:"Sem estrutura",c:"#EF4444"}]],["corretoresPresentes","Corretores?",[{v:"sim",l:"Sim",c:"#10B981"},{v:"dono",l:"So dono",c:"#F59E0B"},{v:"vazio",l:"Vazio",c:"#EF4444"}]],["carteiraConfirmada","Carteira?",[{v:"investidores",l:"Investidores",c:"#10B981"},{v:"residencial",l:"Residencial",c:"#F59E0B"},{v:"nc",l:"Nao claro",c:P.steel}]],["entendeuSDR","Entendeu SDR?",[{v:"sim",l:"Sim",c:"#10B981"},{v:"parcial",l:"Parcial",c:"#F59E0B"},{v:"nao",l:"Nao",c:"#EF4444"}]],["interesseReal","Interesse real",[{v:"avancar",l:"Quer avancar",c:"#10B981"},{v:"talvez",l:"Talvez",c:"#F59E0B"},{v:"educado",l:"So educado",c:"#EF4444"}]],["proximoPasso","Proximo passo",[{v:"cadastro",l:"Cadastro+treino",c:"#10B981"},{v:"reuniao",l:"Mais reuniao",c:"#F59E0B"},{v:"nenhum",l:"Nenhum",c:"#EF4444"}]],["decisao","Decisao",[{v:"fecha",l:"Fecha parceria",c:"#10B981"},{v:"mais",l:"Mais reuniao",c:"#F59E0B"},{v:"descarta",l:"Descarta",c:"#EF4444"}]]].map(([f,label,items])=>(<div key={f} style={{marginBottom:10,marginTop:8}}><div style={{fontSize:12,color:P.black,marginBottom:5,fontWeight:500}}>{label}</div><BtnGroup items={items} field={f} row={it}/></div>))}<div style={{marginTop:12}}><div style={{fontSize:10,color:"#EC4899",marginBottom:6,textTransform:"uppercase",fontWeight:600}}>Resumo da visita</div><RichEdit value={it.resumoVisita} onChange={v=>u(it.id,"resumoVisita",v)} placeholder="Impressao geral..." minH={100}/></div></Section>}
+        <Section title="Plaud + Resumo" accent="#8B5CF6"><Inp f="plaud" row={it} ph="Link gravacao"/>{it.plaud&&it.plaud.startsWith("http")&&<a href={it.plaud} target="_blank" rel="noopener" style={{fontSize:11,color:"#8B5CF6",textDecoration:"underline",display:"inline-block",margin:"8px 0"}}>Abrir</a>}<div style={{marginTop:10}}><div style={{fontSize:10,color:"#8B5CF6",marginBottom:6,textTransform:"uppercase",fontWeight:600}}>Resumo</div><RichEdit value={it.plaudResumo} onChange={v=>u(it.id,"plaudResumo",v)} placeholder="Pontos principais..." minH={120}/></div></Section>
+        <Section title="Observacoes" accent={P.steel}><RichEdit value={it.obs} onChange={v=>u(it.id,"obs",v)} placeholder="Anotacoes livres..." minH={80}/></Section>
+        <div style={{display:"flex",justifyContent:"flex-end",marginTop:8}}><button onClick={()=>removeItem(it.id)} style={{padding:"5px 12px",background:"transparent",color:P.steelDark,border:`1px solid ${P.steelLight}`,borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>Remover</button></div>
+      </div>);};
+
+  // BARS
+  const StatsBar=()=><div style={{display:"flex",alignItems:"center",gap:mob?8:14,padding:mob?"10px 12px":"12px 20px",borderBottom:`1px solid ${P.steelLight}`,flexShrink:0,flexWrap:mob?"wrap":"nowrap"}}><div style={{display:"flex",alignItems:"center",gap:mob?4:8,background:P.black,color:P.white,padding:mob?"4px 10px":"6px 16px",borderRadius:6}}><span style={{fontSize:11,fontWeight:500,color:P.steel}}>Ligacoes</span><span style={{fontSize:mob?18:22,fontWeight:800}}>{ligs}</span></div><div style={{display:"flex",gap:mob?4:8}}>{[["Em",cnt("pediu_email"),"#8B5CF6"],["Ret",cnt("followup"),"#0EA5E9"],["Ag",cnt("agendou"),"#F59E0B"],["Vi",cnt("visitou"),"#EC4899"],["Ca",cnt("cadastrou"),"#10B981"],["Sf",cnt("descartou"),"#EF4444"]].map(([l,v,c])=><div key={l} style={{textAlign:"center",minWidth:mob?24:30}}><div style={{fontSize:mob?13:16,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:8,color:P.steelDark,textTransform:"uppercase"}}>{l}</div></div>)}</div></div>;
+  const FilterBar=()=><div style={{display:"flex",gap:mob?4:6,padding:mob?"8px 12px":"10px 20px",borderBottom:`1px solid ${P.steelLight}`,flexShrink:0,overflowX:"auto",alignItems:"center"}}>{[["all","Todas"],["A","Prio A"],["B","Prio B"],["C","Prio C"],["X","Desc."]].map(([k,l])=><button key={k} onClick={()=>setFilt(k)} style={{padding:mob?"3px 8px":"4px 14px",fontSize:11,borderRadius:4,border:filt===k?`2px solid ${P.black}`:`1px solid ${P.steelLight}`,background:filt===k?P.black:P.white,color:filt===k?P.white:P.steelDark,cursor:"pointer",fontWeight:filt===k?600:400,fontFamily:"inherit",whiteSpace:"nowrap"}}>{l}</button>)}<div style={{flex:1}}/><button onClick={addNew} style={{padding:mob?"3px 10px":"4px 14px",fontSize:13,borderRadius:4,background:"#10B981",color:P.white,border:"none",cursor:"pointer",fontFamily:"inherit",fontWeight:700}}>+</button></div>;
+  const ListPanel=()=><div style={{flex:1,overflowY:"auto"}}>{fil.map(row=>{const s=gs(row.status),active=sel===row.id&&!mob;return(<div key={row.id} onClick={()=>selectItem(row.id)} style={{display:"flex",alignItems:"center",padding:mob?"10px 12px":"12px 20px",cursor:"pointer",gap:mob?8:12,background:active?P.bg:P.white,borderLeft:active?`3px solid ${P.black}`:"3px solid transparent",borderBottom:`1px solid ${P.bg}`,opacity:row.status==="descartou"?0.35:1}}><div style={{width:8,height:8,borderRadius:"50%",background:priDot(row.pri),flexShrink:0}}/><div style={{flex:1,minWidth:0}}><div style={{fontSize:13,fontWeight:active?700:500,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap",color:P.black}}>{row.nome||"Sem nome"}</div><div style={{fontSize:10,color:P.steelDark,marginTop:2}}>{row.dist||"—"} &middot; {row.bairro||"—"}{row.contato?` - ${row.contato}`:""}</div></div><div style={{fontSize:9,fontWeight:600,padding:"3px 10px",borderRadius:4,background:s.c+"14",color:s.c,textTransform:"uppercase",whiteSpace:"nowrap"}}>{s.l}</div>{mob&&<span style={{fontSize:14,color:P.steelLight}}>&#8250;</span>}</div>)})}</div>;
+
+  // SCRIPT
+  const ScriptTab=()=><div style={{padding:mob?16:32,maxWidth:760,background:P.bg,minHeight:"100%"}}><div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20,flexWrap:"wrap",gap:10}}><h2 style={{fontSize:mob?16:18,fontWeight:700,color:P.black,margin:0}}>Playbook</h2><div style={{display:"flex",gap:0,borderRadius:6,overflow:"hidden",border:`1px solid ${P.steelLight}`}}>{[["ligacao","Ligacao"],["visita","Visita"]].map(([k,l])=><button key={k} onClick={()=>setScriptTab(k)} style={{padding:mob?"6px 14px":"7px 20px",fontSize:12,fontWeight:scriptTab===k?600:400,background:scriptTab===k?P.black:P.white,color:scriptTab===k?P.white:P.steelDark,border:"none",cursor:"pointer",fontFamily:"inherit"}}>{l}</button>)}</div></div><div style={{background:P.black,color:P.white,padding:mob?12:16,borderRadius:8,marginBottom:20,fontSize:12}}>{scriptTab==="ligacao"?<><b>Objetivo:</b> Filtrar e agendar visita.</>:<><b>Objetivo:</b> Validar fit, fechar parceria.</>}</div>{scriptTab==="ligacao"?<><Section title="Abertura" accent="#3B82F6"><RichEdit value={scripts.ligAbertura} onChange={v=>uScript("ligAbertura",v)} placeholder="Script de abertura..." minH={100}/></Section><Section title="Perguntas" accent="#F59E0B"><RichEdit value={scripts.ligPerguntas} onChange={v=>uScript("ligPerguntas",v)} placeholder="Perguntas..." minH={100}/></Section><Section title="Fechamento" accent="#10B981"><RichEdit value={scripts.ligFechamento} onChange={v=>uScript("ligFechamento",v)} placeholder="Fechamento..." minH={100}/></Section><Section title="O que funcionou" accent="#EC4899"><RichEdit value={scripts.ligFuncionou} onChange={v=>uScript("ligFuncionou",v)} placeholder="Anote o que deu certo..." minH={120}/></Section></>:<><Section title="Abertura" accent="#3B82F6"><RichEdit value={scripts.visAbertura} onChange={v=>uScript("visAbertura",v)} placeholder="Abertura..." minH={80}/></Section><Section title="Roteiro" accent="#F59E0B"><RichEdit value={scripts.visRoteiro} onChange={v=>uScript("visRoteiro",v)} placeholder="Roteiro..." minH={140}/></Section><Section title="Produto" accent="#8B5CF6"><RichEdit value={scripts.visProduto} onChange={v=>uScript("visProduto",v)} placeholder="Dados do produto..." minH={120}/></Section><Section title="Fechamento" accent="#10B981"><RichEdit value={scripts.visFechamento} onChange={v=>uScript("visFechamento",v)} placeholder="Fechamento..." minH={100}/></Section><Section title="O que funcionou" accent="#EC4899"><RichEdit value={scripts.visFuncionou} onChange={v=>uScript("visFuncionou",v)} placeholder="Anote o que deu certo..." minH={120}/></Section></>}</div>;
+
+  // METRICAS
+  const Metrics=()=><div style={{padding:mob?16:32,maxWidth:860,background:P.bg,minHeight:"100%"}}><h2 style={{fontSize:mob?16:18,fontWeight:700,marginBottom:mob?16:24,color:P.black}}>Metricas</h2><div style={{display:"grid",gridTemplateColumns:mob?"repeat(3,1fr)":"repeat(5,1fr)",gap:mob?8:14,marginBottom:mob?16:28}}>{[["Mapeadas",m.total,P.black],["Contatadas",m.cont,"#3B82F6"],["Agendou",m.ag+m.vi+m.ca,"#F59E0B"],["Visitou",m.vi+m.ca,"#EC4899"],["Parceria",m.ca,"#10B981"]].map(([l,v,c])=><div key={l} style={{textAlign:"center",padding:mob?12:20,background:P.white,borderRadius:8,border:`1px solid ${P.steelLight}`,borderBottom:`3px solid ${c}`}}><div style={{fontSize:mob?22:32,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:mob?9:10,color:P.steelDark,textTransform:"uppercase",letterSpacing:1,marginTop:4}}>{l}</div></div>)}</div><div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr 1fr",gap:mob?8:14,marginBottom:mob?16:28}}><div style={{padding:mob?14:20,background:P.white,borderRadius:8,textAlign:"center",border:`1px solid ${P.steelLight}`}}><div style={{fontSize:mob?24:32,fontWeight:700,color:"#3B82F6"}}>{m.pAc}/{m.pA}</div><div style={{fontSize:10,color:P.steelDark,textTransform:"uppercase",marginTop:4}}>Prio A</div></div><div style={{padding:mob?14:20,background:P.white,borderRadius:8,textAlign:"center",border:`1px solid ${P.steelLight}`}}><div style={{fontSize:mob?24:32,fontWeight:700,color:"#10B981"}}>{m.tv}%</div><div style={{fontSize:10,color:P.steelDark,textTransform:"uppercase",marginTop:4}}>Conversao</div></div><div style={{padding:mob?14:20,background:P.white,borderRadius:8,textAlign:"center",border:`1px solid ${P.steelLight}`}}><div style={{fontSize:mob?24:32,fontWeight:700,color:P.black}}>{m.ligs}</div><div style={{fontSize:10,color:P.steelDark,textTransform:"uppercase",marginTop:4}}>Ligacoes</div></div></div><div style={{display:"grid",gridTemplateColumns:mob?"1fr":"1fr 1fr",gap:mob?8:14}}><div style={{padding:mob?14:20,background:P.white,borderRadius:8,border:`1px solid ${P.steelLight}`}}><Label>Interesse</Label><div style={{display:"flex",gap:10,marginTop:10}}>{[["Sim",m.iS,"#10B981"],["Parcial",m.iP,"#F59E0B"],["Nao",m.iN,"#EF4444"]].map(([l,v,c])=><div key={l} style={{flex:1,textAlign:"center"}}><div style={{fontSize:mob?20:26,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:9,color:P.steelDark,textTransform:"uppercase"}}>{l}</div></div>)}</div></div><div style={{padding:mob?14:20,background:P.white,borderRadius:8,border:`1px solid ${P.steelLight}`}}><Label>Atendimento</Label><div style={{display:"flex",gap:10,marginTop:10}}>{[["Prof.",m.aP,"#10B981"],["Ok",m.aO,"#F59E0B"],["Ruim",m.aR,"#EF4444"]].map(([l,v,c])=><div key={l} style={{flex:1,textAlign:"center"}}><div style={{fontSize:mob?20:26,fontWeight:700,color:c}}>{v}</div><div style={{fontSize:9,color:P.steelDark,textTransform:"uppercase"}}>{l}</div></div>)}</div></div></div></div>;
+
+  // DADOS
+  const Dados=()=><div style={{padding:mob?16:32,maxWidth:640,background:P.bg,minHeight:"100%"}}><h2 style={{fontSize:mob?16:18,fontWeight:700,marginBottom:20,color:P.black}}>Exportar e Backup</h2><Section title="Exportar" accent="#10B981"><div style={{display:"flex",gap:10,flexDirection:mob?"column":"row",marginBottom:10}}><button onClick={exportMD} style={{flex:1,padding:14,background:P.black,color:P.white,border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Baixar .md</button><button onClick={exportXLSX} style={{flex:1,padding:14,background:"#10B981",color:P.white,border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Baixar Excel</button></div><div style={{display:"flex",gap:10,flexDirection:mob?"column":"row"}}><button onClick={()=>navigator.clipboard.writeText(JSON.stringify(data,null,2)).then(()=>alert("JSON copiado!"))} style={{flex:1,padding:12,background:P.white,color:P.black,border:`1px solid ${P.steelLight}`,borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Copiar JSON</button><button onClick={()=>{const l=data.filter(d=>d.pri!=="X").map(d=>`${d.nome}|${d.status}|${d.interesse||"—"}|${d.contato||"—"}`);navigator.clipboard.writeText("NOME|STATUS|INTERESSE|CONTATO\n"+l.join("\n")).then(()=>alert("Copiado!"))}} style={{flex:1,padding:12,background:P.white,color:P.black,border:`1px solid ${P.steelLight}`,borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Copiar resumo</button></div></Section><Section title="Adicionar em massa" accent="#3B82F6"><div style={{fontSize:12,color:P.steelDark,marginBottom:8,lineHeight:1.6}}>Cole JSON com novas imobiliarias. Serao <b>adicionadas</b> sem substituir.</div><textarea value={imp} onChange={e=>setImp(e.target.value)} placeholder='[{"nome":"Nome","tel":"(11)...","bairro":"Moema","pri":"A"}]' rows={5} style={{width:"100%",padding:12,borderRadius:6,border:`1px solid ${P.steelLight}`,fontSize:11,fontFamily:"monospace",boxSizing:"border-box",marginBottom:10}}/><button onClick={()=>{addBulk(imp);setImp("")}} style={{width:"100%",padding:12,background:"#3B82F6",color:P.white,border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Adicionar novas</button></Section><Section title="Importar (substituir)" accent="#F59E0B"><textarea id="imp-full" placeholder="JSON completo..." rows={4} style={{width:"100%",padding:12,borderRadius:6,border:`1px solid ${P.steelLight}`,fontSize:11,fontFamily:"monospace",boxSizing:"border-box",marginBottom:10}}/><button onClick={()=>{const el=document.getElementById("imp-full");try{const p=JSON.parse(el.value);if(Array.isArray(p)){setData(p);el.value="";alert("OK!")}}catch(e){alert("JSON invalido")}}} style={{width:"100%",padding:12,background:"#F59E0B",color:P.white,border:"none",borderRadius:8,fontSize:12,fontWeight:600,cursor:"pointer",fontFamily:"inherit"}}>Substituir tudo</button></Section><div style={{display:"flex",justifyContent:"flex-end",marginTop:24}}><button onClick={()=>{if(confirm("Resetar TUDO?")&&confirm("Ultima chance?")){setData(ALL.map(d=>({...DF,...d})));setScripts(DEFAULT_SCRIPTS)}}} style={{padding:"6px 14px",background:"transparent",color:P.steelDark,border:`1px solid ${P.steelLight}`,borderRadius:4,fontSize:10,cursor:"pointer",fontFamily:"inherit"}}>Resetar tudo</button></div></div>;
+
+  // MAIN
+  return(
+    <div style={{fontFamily:"'Inter',-apple-system,BlinkMacSystemFont,sans-serif",color:P.black,height:"100vh",display:"flex",flexDirection:"column",overflow:"hidden",background:P.bg}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:mob?"0 12px":"0 24px",height:mob?44:52,borderBottom:`1px solid ${P.steelLight}`,flexShrink:0,background:P.black}}>
+        <div style={{display:"flex",alignItems:"center",gap:mob?8:14}}><span style={{fontSize:mob?10:11,letterSpacing:3,textTransform:"uppercase",color:P.steel,fontWeight:700}}>use.inc</span>{!mob&&<><div style={{width:1,height:20,background:"#333"}}/><span style={{fontSize:14,fontWeight:600,color:P.white}}>Controle de Imobiliarias</span><span style={{fontSize:11,color:P.steelDark}}>{data.length} mapeadas</span></>}<div style={{marginLeft:mob?4:10}}><SyncDot/></div></div>
+        <div style={{display:"flex",gap:0,borderRadius:6,overflow:"hidden",border:"1px solid #333"}}>{[["tracker","Tracker"],["metricas","Metricas"],["script","Playbook"],["dados","Dados"]].map(([k,l])=><button key={k} onClick={()=>{setTab(k);if(mob)setMobileView("list")}} style={{padding:mob?"6px 10px":"7px 20px",fontSize:mob?10:11,fontWeight:tab===k?600:400,background:tab===k?P.white:"transparent",color:tab===k?P.black:P.steelDark,border:"none",cursor:"pointer",fontFamily:"inherit"}}>{l}</button>)}</div>
       </div>
-    );
-  }
-
-  function Inp(props) {
-    return <input value={props.item[props.field] || ""} onChange={function(e) { upd(props.item.id, props.field, e.target.value); }} placeholder={props.ph || ""} style={{ width: "100%", padding: "6px 8px", borderRadius: 5, border: "1px solid #ddd", fontSize: 12, fontFamily: "inherit", boxSizing: "border-box" }} />;
-  }
-
-  function Txa(props) {
-    return <textarea value={props.item[props.field] || ""} onChange={function(e) { upd(props.item.id, props.field, e.target.value); }} placeholder={props.ph || ""} rows={props.rows || 3} style={{ width: "100%", padding: "8px", borderRadius: 5, border: "1px solid #ddd", fontSize: 12, resize: "vertical", fontFamily: "inherit", boxSizing: "border-box", lineHeight: 1.5 }} />;
-  }
-
-  var m = useMemo(function() {
-    var a = data.filter(function(d) { return d.pri !== "X"; });
-    var c = a.filter(function(d) { return d.status !== "pendente"; });
-    var pA = a.filter(function(d) { return d.pri === "A"; });
-    var pAc = pA.filter(function(d) { return d.status !== "pendente"; });
-    var ag = cnt("agendou"), vi = cnt("visitou"), ca = cnt("cadastrou");
-    var tv = c.length > 0 ? Math.round(((ag + vi + ca) / c.length) * 100) : 0;
-    return {
-      total: a.length, cont: c.length,
-      pA: pA.length, pAc: pAc.length, pAp: pA.filter(function(d) { return d.status === "pendente"; }).length,
-      iS: c.filter(function(d) { return d.interesse === "sim"; }).length,
-      iP: c.filter(function(d) { return d.interesse === "parcial"; }).length,
-      iN: c.filter(function(d) { return d.interesse === "nao"; }).length,
-      aP: c.filter(function(d) { return d.acesso === "pro"; }).length,
-      aO: c.filter(function(d) { return d.acesso === "ok"; }).length,
-      aR: c.filter(function(d) { return d.acesso === "ruim"; }).length,
-      pe: cnt("pediu_email"), fu: cnt("followup"),
-      sf: Math.max(cnt("descartou") - data.filter(function(d) { return d.pri === "X"; }).length, 0),
-      ag: ag, vi: vi, ca: ca, tv: tv, ligs: ligs
-    };
-  }, [data]);
-
-  return (
-    <div style={{ fontFamily: "'Inter', -apple-system, sans-serif", maxWidth: 960, margin: "0 auto", padding: "16px 24px", color: "#1a1a1a" }}>
-      <div style={{ marginBottom: 12, paddingBottom: 8, borderBottom: "2px solid #1a1a1a" }}>
-        <div style={{ fontSize: 10, letterSpacing: 2, textTransform: "uppercase", color: "#BCBFCC" }}>use.incorporadora</div>
-        <h1 style={{ fontSize: 18, fontWeight: 700, margin: "2px 0 0" }}>Controle de Imobiliarias</h1>
-        <div style={{ fontSize: 11, color: "#888", marginTop: 2 }}>
-          27 imobiliarias - Meta: 10 parceiras - Sprint 1
-          {saving && <span style={{ marginLeft: 8, color: "#F59E0B" }}>salvando...</span>}
-          {ok && !saving && <span style={{ marginLeft: 8, color: "#10B981" }}>salvo na nuvem</span>}
-        </div>
-      </div>
-
-      <div style={{ display: "flex", gap: 0, marginBottom: 12, borderRadius: 8, overflow: "hidden", border: "1px solid #ddd" }}>
-        {[["tracker", "Tracker"], ["pesquisa", "Pre-busca"], ["metricas", "Metricas"], ["script", "Script"], ["dados", "Dados"]].map(function(t) {
-          return <button key={t[0]} onClick={function() { setTab(t[0]); }} style={{ flex: 1, padding: "10px 3px", fontSize: 11, fontWeight: tab === t[0] ? 700 : 400, background: tab === t[0] ? "#1a1a1a" : "#fff", color: tab === t[0] ? "#fff" : "#666", border: "none", cursor: "pointer" }}>{t[1]}</button>;
-        })}
-      </div>
-
-      {/* TRACKER */}
-      {tab === "tracker" && (
-        <div>
-          <div style={{ background: "linear-gradient(135deg, #3B82F6, #6366F1)", color: "#fff", padding: "10px 16px", borderRadius: 10, marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-            <span style={{ fontSize: 13, fontWeight: 600 }}>Ligacoes realizadas</span>
-            <span style={{ fontSize: 26, fontWeight: 800 }}>{ligs}</span>
-          </div>
-
-          <div style={{ display: "flex", gap: 4, marginBottom: 10, overflowX: "auto" }}>
-            {[["Pend.", cnt("pendente"), "#999"], ["Email", cnt("pediu_email"), "#6366F1"], ["Ret.", cnt("followup"), "#0EA5E9"], ["Agend.", cnt("agendou"), "#F59E0B"], ["Visit.", cnt("visitou"), "#8B5CF6"], ["Cad.", cnt("cadastrou"), "#10B981"], ["S/f", cnt("descartou"), "#EF4444"]].map(function(x) {
-              return <div key={x[0]} style={{ textAlign: "center", padding: "4px 5px", background: x[2] + "10", borderRadius: 6, minWidth: 38 }}><div style={{ fontSize: 16, fontWeight: 700, color: x[2] }}>{x[1]}</div><div style={{ fontSize: 7, color: x[2], textTransform: "uppercase" }}>{x[0]}</div></div>;
-            })}
-          </div>
-
-          <div style={{ display: "flex", gap: 4, marginBottom: 10, flexWrap: "wrap" }}>
-            {[["all", "Todas"], ["A", "A"], ["B", "B"], ["C", "C"], ["X", "X"]].map(function(f) {
-              return <button key={f[0]} onClick={function() { setFilt(f[0]); }} style={{ padding: "4px 10px", fontSize: 11, borderRadius: 20, border: filt === f[0] ? "2px solid #1a1a1a" : "1px solid #ddd", background: filt === f[0] ? "#1a1a1a" : "#fff", color: filt === f[0] ? "#fff" : "#666", cursor: "pointer", fontWeight: filt === f[0] ? 600 : 400 }}>{f[1]}</button>;
-            })}
-          </div>
-
-          {filtered.map(function(item) {
-            var isE = exp === item.id;
-            var s = gSt(item.status);
-            var sq = ["ligou", "pediu_email", "followup", "agendou", "visitou", "cadastrou"].indexOf(item.status) >= 0;
-            var sv = ["agendou", "visitou", "cadastrou"].indexOf(item.status) >= 0;
-            var spv = ["visitou", "cadastrou"].indexOf(item.status) >= 0;
-
-            return (
-              <div key={item.id} style={{ border: "1px solid #e5e5e5", borderRadius: 10, marginBottom: 6, overflow: "hidden", background: item.status === "descartou" ? "#fafafa" : "#fff", opacity: item.status === "descartou" ? 0.5 : 1 }}>
-                <div onClick={function() { setExp(isE ? null : item.id); }} style={{ display: "flex", alignItems: "center", padding: "10px 12px", cursor: "pointer", gap: 8 }}>
-                  <span style={{ fontSize: 13 }}>{priE(item.pri)}</span>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{item.nome}</div>
-                    <div style={{ fontSize: 10, color: "#999" }}>{item.dist} - {item.bairro}{item.contato ? " - " + item.contato : ""}{item.interesse === "sim" ? " - interessou" : ""}{item.interesse === "nao" ? " - s/ interesse" : ""}</div>
-                  </div>
-                  <div style={{ fontSize: 9, fontWeight: 600, padding: "2px 7px", borderRadius: 20, background: s.c + "15", color: s.c, textTransform: "uppercase", whiteSpace: "nowrap" }}>{s.l}</div>
-                </div>
-
-                {isE && (
-                  <div style={{ padding: "0 12px 14px", borderTop: "1px solid #f0f0f0", paddingTop: 10 }}>
-                    <div style={{ fontSize: 11, color: "#555", background: "#f9f9f9", padding: "6px 8px", borderRadius: 6, marginBottom: 8, lineHeight: 1.4 }}>{item.motivo}</div>
-
-                    {item.tel && item.tel !== "Ver site" && <a href={"tel:" + item.tel.replace(/[^0-9+]/g, "")} style={{ display: "block", background: "#1a1a1a", color: "#fff", padding: "10px", borderRadius: 8, textAlign: "center", fontSize: 13, fontWeight: 600, textDecoration: "none", marginBottom: 8 }}>Tel: {item.tel}</a>}
-                    {item.tel === "Ver site" && <div style={{ background: "#FEF3C7", color: "#92400E", padding: "8px", borderRadius: 8, textAlign: "center", fontSize: 12, marginBottom: 8 }}>Buscar telefone no site</div>}
-
-                    <div style={{ display: "flex", gap: 5, marginBottom: 8, flexWrap: "wrap" }}>
-                      {item.insta && <a href={"https://instagram.com/" + item.insta} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", fontSize: 11, borderRadius: 6, background: "#fce4ec", color: "#C2185B", textDecoration: "none", fontWeight: 500 }}>@{item.insta}</a>}
-                      {item.site && <a href={"https://" + item.site} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", fontSize: 11, borderRadius: 6, background: "#e3f2fd", color: "#1565C0", textDecoration: "none", fontWeight: 500 }}>Site</a>}
-                      <a href={"https://www.google.com/maps/search/" + encodeURIComponent(item.nome + " " + item.bairro + " Sao Paulo")} target="_blank" rel="noopener noreferrer" style={{ padding: "6px 10px", fontSize: 11, borderRadius: 6, background: "#e8f5e9", color: "#2E7D32", textDecoration: "none", fontWeight: 500 }}>Maps</a>
-                    </div>
-
-                    <div style={{ fontSize: 11, color: "#555", background: "#f5f5f5", padding: 8, borderRadius: 6, marginBottom: 8, lineHeight: 1.5 }}>Rating: {item.rating} ({item.avaliacoes} av.) - CRECI: {item.creci} - {item.endereco}<br />{item.descricao}</div>
-
-                    <div style={{ background: "#f0f9ff", padding: 10, borderRadius: 8, marginBottom: 8, border: "1px solid #bae6fd" }}><div style={L}>Contato</div><div style={{ display: "flex", gap: 6 }}><Inp field="contato" item={item} ph="Nome" /><Inp field="contatoCargo" item={item} ph="Cargo" /></div></div>
-
-                    <div style={{ marginBottom: 8 }}><div style={L}>Status</div><div style={{ display: "flex", flexWrap: "wrap", gap: 3 }}>{STS.map(function(o) { return <button key={o.v} onClick={function() { upd(item.id, "status", o.v); }} style={{ padding: "5px 7px", borderRadius: 5, fontSize: 10, cursor: "pointer", border: item.status === o.v ? "2px solid " + o.c : "1px solid #e5e5e5", background: item.status === o.v ? o.c + "15" : "#fff", color: item.status === o.v ? o.c : "#888", fontWeight: item.status === o.v ? 600 : 400 }}>{o.l}</button>; })}</div></div>
-
-                    {sq && <div style={{ background: "#f9f9f9", padding: 10, borderRadius: 8, marginBottom: 8 }}><div style={L}>Qualificacao</div>{[["investidor", "Trabalha c/ investidor?", "S / N / Parcial"], ["compacto", "Trabalha c/ compacto?", "S / N / Parcial"], ["corretores", "No corretores", "ex: 5"], ["parceria", "Aberto a parceria?", "S / N / Talvez"], ["concorrente", "Vende concorrente?", "S (qual?) / N"]].map(function(q) { return <div key={q[0]} style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 5 }}><span style={{ fontSize: 11, color: "#555", width: 150, flexShrink: 0 }}>{q[1]}</span><Inp field={q[0]} item={item} ph={q[2]} /></div>; })}</div>}
-
-                    {sq && <div style={{ background: "#f9f9f9", padding: 10, borderRadius: 8, marginBottom: 8 }}><div style={L}>Impressao</div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Se interessou?</div><BtnGroup items={[{ v: "sim", l: "Sim", c: "#10B981" }, { v: "parcial", l: "Parcial", c: "#F59E0B" }, { v: "nao", l: "Nao", c: "#EF4444" }, { v: "nc", l: "Nao consegui falar", c: "#999" }]} field="interesse" item={item} /></div><div><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Atendimento?</div><BtnGroup items={[{ v: "pro", l: "Profissional", c: "#10B981" }, { v: "ok", l: "Ok", c: "#F59E0B" }, { v: "ruim", l: "Ruim", c: "#EF4444" }]} field="acesso" item={item} /></div></div>}
-
-                    {sv && <div style={{ background: "#FFFBEB", padding: 10, borderRadius: 8, marginBottom: 8, border: "1px solid #FDE68A" }}><div style={L}>Reuniao / Visita</div><div style={{ display: "flex", gap: 6, marginBottom: 6 }}><div style={{ flex: 1 }}><div style={{ fontSize: 10, color: "#999", marginBottom: 2 }}>Data</div><input type="date" value={item.visita || ""} onChange={function(e) { upd(item.id, "visita", e.target.value); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 5, border: "1px solid #ddd", fontSize: 12, boxSizing: "border-box" }} /></div><div style={{ flex: 1 }}><div style={{ fontSize: 10, color: "#999", marginBottom: 2 }}>Horario</div><input type="time" value={item.horario || ""} onChange={function(e) { upd(item.id, "horario", e.target.value); }} style={{ width: "100%", padding: "6px 8px", borderRadius: 5, border: "1px solid #ddd", fontSize: 12, boxSizing: "border-box" }} /></div></div><div><div style={{ fontSize: 10, color: "#999", marginBottom: 2 }}>Local</div><Inp field="local" item={item} ph={item.endereco || "Endereco"} /></div></div>}
-
-                    {spv && <div style={{ background: "#F5F3FF", padding: 10, borderRadius: 8, marginBottom: 8, border: "1px solid #DDD6FE" }}><div style={L}>Avaliacao pos-visita</div><div style={{ display: "flex", gap: 6, marginBottom: 6 }}><Inp field="visitaContato" item={item} ph="Reuniu com quem?" /><Inp field="visitaCargo" item={item} ph="Cargo" /></div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Escritorio</div><BtnGroup items={[{ v: "estruturado", l: "Estruturado", c: "#10B981" }, { v: "simples", l: "Simples", c: "#F59E0B" }, { v: "sem", l: "Sem estrutura", c: "#EF4444" }]} field="escritorio" item={item} /></div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Corretores presentes?</div><BtnGroup items={[{ v: "sim", l: "Sim", c: "#10B981" }, { v: "dono", l: "So o dono", c: "#F59E0B" }, { v: "vazio", l: "Vazio", c: "#EF4444" }]} field="corretoresPresentes" item={item} /></div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Carteira confirmada?</div><BtnGroup items={[{ v: "investidores", l: "Tem investidores", c: "#10B981" }, { v: "residencial", l: "Mais residencial", c: "#F59E0B" }, { v: "nc", l: "Nao ficou claro", c: "#999" }]} field="carteiraConfirmada" item={item} /></div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Entendeu proposta SDR?</div><BtnGroup items={[{ v: "sim", l: "Sim", c: "#10B981" }, { v: "parcial", l: "Parcial", c: "#F59E0B" }, { v: "nao", l: "Nao", c: "#EF4444" }]} field="entendeuSDR" item={item} /></div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Interesse real</div><BtnGroup items={[{ v: "avancar", l: "Quer avancar", c: "#10B981" }, { v: "talvez", l: "Talvez", c: "#F59E0B" }, { v: "educado", l: "So educado", c: "#EF4444" }]} field="interesseReal" item={item} /></div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Proximo passo</div><BtnGroup items={[{ v: "cadastro", l: "Cadastro + treino", c: "#10B981" }, { v: "reuniao", l: "Mais reuniao", c: "#F59E0B" }, { v: "nenhum", l: "Nenhum", c: "#EF4444" }]} field="proximoPasso" item={item} /></div><div style={{ marginBottom: 6 }}><div style={{ fontSize: 11, color: "#555", marginBottom: 3 }}>Decisao</div><BtnGroup items={[{ v: "fecha", l: "Fecha parceria", c: "#10B981" }, { v: "mais", l: "Mais reuniao", c: "#F59E0B" }, { v: "descarta", l: "Descarta", c: "#EF4444" }]} field="decisao" item={item} /></div><div><div style={{ fontSize: 10, color: "#7C3AED", marginBottom: 3, textTransform: "uppercase" }}>Resumo da visita</div><Txa field="resumoVisita" item={item} ph="O que aconteceu? Impressao, pontos positivos/negativos..." rows={5} /></div></div>}
-
-                    <div style={{ background: "#F5F3FF", padding: 10, borderRadius: 8, marginBottom: 8, border: "1px solid #DDD6FE" }}><div style={L}>Gravacao Plaud + Resumo</div><Inp field="plaud" item={item} ph="Link gravacao ou nome arquivo" />{item.plaud && item.plaud.startsWith("http") && <a href={item.plaud} target="_blank" rel="noopener noreferrer" style={{ fontSize: 11, color: "#7C3AED", textDecoration: "underline", display: "block", margin: "4px 0" }}>Abrir gravacao</a>}<div style={{ fontSize: 10, color: "#7C3AED", margin: "6px 0 3px", textTransform: "uppercase" }}>Resumo (leia antes da reuniao)</div><Txa field="plaudResumo" item={item} ph="O que foi falado? Pontos principais, tom, duvidas..." rows={6} /></div>
-
-                    <div><div style={L}>Observacoes gerais</div><Txa field="obs" item={item} ph="Anotacoes livres..." rows={3} /></div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* PRE-BUSCA */}
-      {tab === "pesquisa" && (
-        <div>
-          <div style={{ background: "#f9f9f9", padding: 12, borderRadius: 8, marginBottom: 12, fontSize: 12, lineHeight: 1.6 }}>
-            <b>Checklist:</b> Instagram (ultimos 20 posts) - Google Maps (rating, fotos) - Site (lancamentos?) - <a href="https://www.crecisp.gov.br/cidadao/consultas" target="_blank" rel="noopener noreferrer" style={{ color: "#3B82F6" }}>CRECI-SP</a>
-          </div>
-          {data.filter(function(d) { return d.pri === "A"; }).sort(function(a, b) { return a.ordem - b.ordem; }).map(function(item) {
-            return <div key={item.id} style={{ border: "1px solid #e5e5e5", borderRadius: 8, padding: 12, marginBottom: 8 }}><div style={{ fontSize: 14, fontWeight: 700, marginBottom: 4 }}>{item.nome}</div><div style={{ fontSize: 11, color: "#666", marginBottom: 8 }}>{item.dist} - {item.bairro} - {item.endereco}</div><div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 8 }}>{item.insta && <a href={"https://instagram.com/" + item.insta} target="_blank" rel="noopener noreferrer" style={{ padding: "8px 12px", fontSize: 12, borderRadius: 6, background: "#fce4ec", color: "#C2185B", textDecoration: "none", fontWeight: 600, flex: "1 1 auto", textAlign: "center" }}>@{item.insta}</a>}{item.site && <a href={"https://" + item.site} target="_blank" rel="noopener noreferrer" style={{ padding: "8px 12px", fontSize: 12, borderRadius: 6, background: "#e3f2fd", color: "#1565C0", textDecoration: "none", fontWeight: 600, flex: "1 1 auto", textAlign: "center" }}>{item.site}</a>}<a href={"https://www.google.com/maps/search/" + encodeURIComponent(item.nome + " Moema Sao Paulo")} target="_blank" rel="noopener noreferrer" style={{ padding: "8px 12px", fontSize: 12, borderRadius: 6, background: "#e8f5e9", color: "#2E7D32", textDecoration: "none", fontWeight: 600, flex: "1 1 auto", textAlign: "center" }}>Maps</a></div><div style={{ fontSize: 11, color: "#555", background: "#f5f5f5", padding: 8, borderRadius: 6, lineHeight: 1.5 }}>Rating: {item.rating} ({item.avaliacoes} av.) - CRECI: {item.creci}<br />{item.descricao}</div></div>;
-          })}
-        </div>
-      )}
-
-      {/* METRICAS */}
-      {tab === "metricas" && (
-        <div>
-          <div style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>Dados pra reuniao com Joao</div>
-          <div style={{ marginBottom: 16 }}><div style={L}>Funil</div>{[["Mapeadas", m.total, "#1a1a1a"], ["Contatadas", m.cont, "#3B82F6"], ["Agendou", m.ag + m.vi + m.ca, "#F59E0B"], ["Visitou", m.vi + m.ca, "#8B5CF6"], ["Parceria", m.ca, "#10B981"]].map(function(x) { var p = m.total > 0 ? Math.max((x[1] / m.total) * 100, 4) : 4; return <div key={x[0]} style={{ marginBottom: 4 }}><div style={{ display: "flex", justifyContent: "space-between", fontSize: 11, marginBottom: 2 }}><span>{x[0]}</span><span style={{ fontWeight: 700 }}>{x[1]}</span></div><div style={{ background: "#f0f0f0", borderRadius: 4, height: 20, overflow: "hidden" }}><div style={{ background: x[2], height: "100%", borderRadius: 4, width: p + "%" }} /></div></div>; })}</div>
-          <div style={{ display: "flex", gap: 8, marginBottom: 16 }}><div style={{ flex: 1, background: "#f0f9ff", padding: 12, borderRadius: 8, textAlign: "center" }}><div style={{ fontSize: 24, fontWeight: 700, color: "#3B82F6" }}>{m.pAc}/{m.pA}</div><div style={{ fontSize: 10, color: "#3B82F6", textTransform: "uppercase" }}>Prio A contatadas</div></div><div style={{ flex: 1, background: "#ECFDF5", padding: 12, borderRadius: 8, textAlign: "center" }}><div style={{ fontSize: 24, fontWeight: 700, color: "#10B981" }}>{m.tv}%</div><div style={{ fontSize: 10, color: "#10B981", textTransform: "uppercase" }}>Ligacao - visita</div></div></div>
-          <div style={{ marginBottom: 16 }}><div style={L}>Interesse</div><div style={{ display: "flex", gap: 6 }}>{[["Sim", m.iS, "#10B981"], ["Parcial", m.iP, "#F59E0B"], ["Nao", m.iN, "#EF4444"]].map(function(x) { return <div key={x[0]} style={{ flex: 1, textAlign: "center", padding: 8, background: x[2] + "10", borderRadius: 6 }}><div style={{ fontSize: 20, fontWeight: 700, color: x[2] }}>{x[1]}</div><div style={{ fontSize: 9, color: x[2], textTransform: "uppercase" }}>{x[0]}</div></div>; })}</div></div>
-          <div style={{ marginBottom: 16 }}><div style={L}>Atendimento</div><div style={{ display: "flex", gap: 6 }}>{[["Prof.", m.aP, "#10B981"], ["Ok", m.aO, "#F59E0B"], ["Ruim", m.aR, "#EF4444"]].map(function(x) { return <div key={x[0]} style={{ flex: 1, textAlign: "center", padding: 8, background: x[2] + "10", borderRadius: 6 }}><div style={{ fontSize: 20, fontWeight: 700, color: x[2] }}>{x[1]}</div><div style={{ fontSize: 9, color: x[2], textTransform: "uppercase" }}>{x[0]}</div></div>; })}</div></div>
-          <div style={{ marginBottom: 16 }}><div style={L}>Nao avancaram</div><div style={{ display: "flex", gap: 6 }}>{[["Email", m.pe, "#6366F1"], ["Retornar", m.fu, "#0EA5E9"], ["Sem fit", m.sf, "#EF4444"]].map(function(x) { return <div key={x[0]} style={{ flex: 1, textAlign: "center", padding: 8, background: x[2] + "10", borderRadius: 6 }}><div style={{ fontSize: 20, fontWeight: 700, color: x[2] }}>{x[1]}</div><div style={{ fontSize: 9, color: x[2], textTransform: "uppercase" }}>{x[0]}</div></div>; })}</div></div>
-          <div style={{ background: "#f9f9f9", padding: 12, borderRadius: 8, fontSize: 12, lineHeight: 1.6 }}><b>Resumo Sprint 1:</b><br />{m.ligs} ligacoes de {m.total} mapeadas. {m.pAc}/{m.pA} Prio A contatadas ({m.pAp} pendentes).<br />{m.ag} visitas agendadas, {m.vi} realizadas, {m.ca} parcerias fechadas. Taxa: {m.tv}%.</div>
-        </div>
-      )}
-
-      {/* SCRIPT */}
-      {tab === "script" && (
-        <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-          <div style={{ background: "#1a1a1a", color: "#fff", padding: 14, borderRadius: 10, marginBottom: 14 }}><div style={{ fontSize: 10, letterSpacing: 1.5, textTransform: "uppercase", color: "#BCBFCC", marginBottom: 4 }}>OBJETIVO</div><div><b>Filtrar e agendar visita.</b> 3 sim = agenda - 2 = sem prioridade - 1 = agradece</div></div>
-          <div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#999", marginBottom: 6 }}>ABERTURA</div><div style={{ background: "#f5f5f5", padding: 14, borderRadius: 8, fontSize: 13, fontStyle: "italic", borderLeft: "3px solid #1a1a1a" }}>"Oi [nome], Bruno Trolezi, responsavel comercial da Use Incorporadora. A Use nasceu de um <b>spin-off de uma grande incorporadora carioca de 30+ anos</b>, mas e uma estrutura nova em SP.<br /><br />Estamos <b>ampliando nossa base de parceiros</b>. Temos um empreendimento em Moema, <b>75% vendido</b>, e estou <b>selecionando</b> imobiliarias da regiao.<br /><br />Gostaria de <b>visitar o teu escritorio</b>, bater um papo, entender a tua estrutura."</div></div>
-          <div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#999", marginBottom: 6 }}>PERGUNTAS (3-4 max)</div>{[["Trabalham mais com investidor ou morador?", "Perfil"], ["Faixa de ticket que mais trabalham?", "Sinergia"], ["Lancamentos ou revenda?", "Disposicao"], ["Quantos corretores?", "Porte"]].map(function(q, i) { return <div key={i} style={{ display: "flex", gap: 8, marginBottom: 8 }}><div style={{ background: "#1a1a1a", color: "#fff", borderRadius: "50%", width: 20, height: 20, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 10, fontWeight: 700, flexShrink: 0 }}>{i + 1}</div><div><div style={{ fontSize: 13 }}>"{q[0]}"</div><div style={{ fontSize: 10, color: "#999" }}>{q[1]}</div></div></div>; })}</div>
-          <div style={{ marginBottom: 14 }}><div style={{ fontSize: 11, fontWeight: 700, textTransform: "uppercase", color: "#999", marginBottom: 6 }}>FECHAMENTO</div>{[["Tem fit", "#10B981", "#ECFDF5", "\"Posso passar ai na [dia]? Uns 20 minutos.\""], ["Duvida", "#F59E0B", "#FFFBEB", "\"Posso mandar um resumo por WhatsApp?\""], ["Sem fit", "#EF4444", "#FEF2F2", "\"Talvez pra esse produto nao. A Use tem pipeline forte.\""]].map(function(x) { return <div key={x[0]} style={{ marginBottom: 8 }}><div style={{ fontSize: 11, fontWeight: 600, color: x[1], marginBottom: 3 }}>{x[0]}</div><div style={{ background: x[2], padding: 12, borderRadius: 8, fontSize: 13, fontStyle: "italic", borderLeft: "3px solid " + x[1] }}>{x[3]}</div></div>; })}</div>
-          <div style={{ background: "#FFFBEB", padding: 12, borderRadius: 8, borderLeft: "3px solid #F59E0B" }}><div style={{ fontSize: 11, fontWeight: 700, marginBottom: 4 }}>POSTURA</div><div style={{ fontSize: 12 }}>Selecionando parceiros. Usar: "ampliando" - "selecionando" - "75% vendido" - "spin-off"<br />Nunca: "precisa vender" - "abrindo pro mercado" - Nao falar ADM, comissao no 1o contato.</div></div>
-        </div>
-      )}
-
-      {/* DADOS */}
-      {tab === "dados" && (
-        <div>
-          <div style={{ fontSize: 12, color: "#888", marginBottom: 12 }}>Backup e restauracao - Dados salvos no Supabase (nuvem)</div>
-          <button onClick={function() { navigator.clipboard.writeText(JSON.stringify(data, null, 2)).then(function() { alert("JSON copiado!"); }); }} style={{ width: "100%", padding: 12, background: "#1a1a1a", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 8 }}>Copiar dados (JSON)</button>
-          <button onClick={function() { var lines = data.filter(function(d) { return d.pri !== "X"; }).map(function(d) { return d.nome + "|" + d.status + "|" + (d.interesse || "--") + "|" + (d.acesso || "--") + "|" + (d.contato || "--") + "|" + (d.obs || "--").substring(0, 50); }); navigator.clipboard.writeText("NOME|STATUS|INTERESSE|ATEND|CONTATO|OBS\n" + lines.join("\n")).then(function() { alert("Resumo copiado!"); }); }} style={{ width: "100%", padding: 12, background: "#3B82F6", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer", marginBottom: 16 }}>Copiar resumo (texto)</button>
-          <div style={{ borderTop: "1px solid #eee", paddingTop: 12, marginBottom: 8 }}><div style={L}>Importar dados (restaurar backup)</div><textarea value={imp} onChange={function(e) { setImp(e.target.value); }} placeholder="Cole o JSON aqui..." rows={4} style={{ width: "100%", padding: 8, borderRadius: 5, border: "1px solid #ddd", fontSize: 11, fontFamily: "monospace", boxSizing: "border-box", marginBottom: 8 }} /><button onClick={function() { try { var parsed = JSON.parse(imp); if (Array.isArray(parsed)) { setData(parsed); setImp(""); alert("Importado!"); } } catch (e) { alert("JSON invalido"); } }} style={{ width: "100%", padding: 10, background: "#F59E0B", color: "#fff", border: "none", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Importar</button></div>
-          <div style={{ marginTop: 16, borderTop: "1px solid #eee", paddingTop: 12 }}><button onClick={function() { if (confirm("APAGAR TUDO?")) { setData(initData()); } }} style={{ width: "100%", padding: 10, background: "#fff", color: "#EF4444", border: "2px solid #EF4444", borderRadius: 8, fontSize: 13, fontWeight: 600, cursor: "pointer" }}>Resetar tudo</button></div>
-        </div>
-      )}
-
-      <div style={{ marginTop: 14, padding: "8px 0", borderTop: "1px solid #eee", textAlign: "center" }}><span style={{ fontSize: 10, color: "#BCBFCC" }}>use.inc - Tracker v5 - Supabase</span></div>
+      {tab==="tracker"?(mob?(mobileView==="detail"&&it?<div style={{flex:1,overflowY:"auto",background:P.bg}}><DetailPanel showBack={true}/></div>:<div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:P.white}}><StatsBar/><FilterBar/><ListPanel/></div>):(<div style={{display:"flex",flex:1,overflow:"hidden"}}><div style={{width:500,flexShrink:0,borderRight:`1px solid ${P.steelLight}`,display:"flex",flexDirection:"column",background:P.white}}><StatsBar/><FilterBar/><ListPanel/></div><div style={{flex:1,overflowY:"auto",background:P.bg}}><DetailPanel showBack={false}/></div></div>)):tab==="metricas"?<div style={{flex:1,overflowY:"auto"}}><Metrics/></div>:tab==="script"?<div style={{flex:1,overflowY:"auto"}}><ScriptTab/></div>:<div style={{flex:1,overflowY:"auto"}}><Dados/></div>}
     </div>
   );
 }
