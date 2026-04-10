@@ -107,17 +107,16 @@ export default function App(){
   useEffect(()=>{
     if(!ok)return;
     if(saveTimer.current)clearTimeout(saveTimer.current);
-    setSyncStatus("saving");
     saveTimer.current=setTimeout(async()=>{
+      setSyncStatus("saving");
       try{
         await supaWrite(1,data);
         await supaWrite(2,scripts);
         setSyncStatus("saved");
       }catch(e){
-        // Fallback
         try{if(window.storage){await window.storage.set("use-imob-v4",JSON.stringify(data));await window.storage.set("use-scripts-v1",JSON.stringify(scripts));setSyncStatus("local")}}catch(e2){setSyncStatus("error")}
       }
-    },800);
+    },3000);
   },[data,scripts,ok]);
 
   const u=useCallback((id,f,v)=>setData(p=>p.map(i=>i.id===id?{...i,[f]:v}:i)),[]);
