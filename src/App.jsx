@@ -81,7 +81,6 @@ export default function App(){
   const[scriptTab,setScriptTab]=useState("ligacao");
   const[scripts,setScripts]=useState(DEFAULT_SCRIPTS);
   const[editing,setEditing]=useState(false);
-  const[detailOpen,setDetailOpen]=useState(true);
   const saveTimer=useRef(null);
   const syncRef=useRef(null);
   const listScrollRef=useRef(null);
@@ -103,10 +102,10 @@ export default function App(){
   const ligs=data.filter(d=>d.status!=="pendente"&&d.status!=="nao_atendeu"&&d.pri!=="X").length;
   const gs=s=>SS.find(x=>x.v===s)||SS[0];
   const it=sel?data.find(d=>d.id===sel):null;
-  const selectItem=id=>{setSel(id);setEditing(false);setDetailOpen(true);detailScrollPos.current=0;if(mob)setMobileView("detail")};
+  const selectItem=id=>{setSel(id);setEditing(false);detailScrollPos.current=0;if(mob)setMobileView("detail")};
   const goBack=()=>setMobileView("list");
   const priDot=p=>p==="A"?"#10B981":p==="B"?"#F59E0B":p==="C"?"#8B5CF6":"#EF4444";
-  const addNew=()=>{const mx=data.reduce((a,d)=>Math.max(a,d.id),0);const mo=data.reduce((a,d)=>Math.max(a,d.ordem||0),0);const n={...DF,id:mx+1,ordem:mo+1,nome:"Nova imobiliaria",pri:"A",status:"pendente"};setData(p=>[...p,n]);setSel(mx+1);setEditing(true);setDetailOpen(true);if(mob)setMobileView("detail")};
+  const addNew=()=>{const mx=data.reduce((a,d)=>Math.max(a,d.id),0);const mo=data.reduce((a,d)=>Math.max(a,d.ordem||0),0);const n={...DF,id:mx+1,ordem:mo+1,nome:"Nova imobiliaria",pri:"A",status:"pendente"};setData(p=>[...p,n]);setSel(mx+1);setEditing(true);if(mob)setMobileView("detail")};
   const addBulk=json=>{try{const items=JSON.parse(json);if(!Array.isArray(items)){alert("Precisa ser array");return}const mx=data.reduce((a,d)=>Math.max(a,d.id),0);const mo=data.reduce((a,d)=>Math.max(a,d.ordem||0),0);const nw=items.map((item,i)=>({...DF,...item,id:item.id||mx+1+i,ordem:item.ordem||mo+1+i,status:item.status||"pendente",pri:item.pri||"A"}));if(nw.some(n=>data.find(d=>d.id===n.id))){alert("IDs duplicados");return}setData(p=>[...p,...nw]);alert(`${nw.length} adicionadas!`)}catch(e){alert("JSON invalido")}};
   const removeItem=id=>{if(confirm("Remover?")){setData(p=>p.filter(d=>d.id!==id));if(sel===id)setSel(null)}};
 
@@ -131,34 +130,40 @@ export default function App(){
 
   // TASK PANEL (when detail is closed)
   const TaskPanel=()=>{
-    const retornar=data.filter(d=>d.status==="followup"&&d.pri!=="X");
-    const email=data.filter(d=>d.status==="pediu_email"&&d.pri!=="X");
-    const naoAtendeu=data.filter(d=>d.status==="nao_atendeu"&&d.pri!=="X");
-    const TaskRow=({row})=>{const s=gs(row.status);return(
-      <div onClick={()=>selectItem(row.id)} style={{display:"flex",alignItems:"center",padding:"10px 14px",cursor:"pointer",gap:10,background:P.white,borderRadius:6,marginBottom:6,border:`1px solid ${P.steelLight}`}}>
-        <div style={{width:7,height:7,borderRadius:"50%",background:priDot(row.pri),flexShrink:0}}/>
+    const retornar=data.filter(d=>d.status==="followup"&&d.pri!=="X").sort((a,b)=>(a.ordem||999)-(b.ordem||999));
+    const email=data.filter(d=>d.status==="pediu_email"&&d.pri!=="X").sort((a,b)=>(a.ordem||999)-(b.ordem||999));
+    const naoAtendeu=data.filter(d=>d.status==="nao_atendeu"&&d.pri!=="X").sort((a,b)=>(a.ordem||999)-(b.ordem||999));
+    const total=retornar.length+email.length+naoAtendeu.length;
+    const TaskRow=({row})=>(
+      <div onClick={()=>selectItem(row.id)} style={{display:"flex",alignItems:"center",padding:"12px 16px",cursor:"pointer",gap:12,background:P.white,borderRadius:8,marginBottom:8,border:`1px solid ${P.steelLight}`,transition:"box-shadow .15s"}} onMouseEnter={e=>e.currentTarget.style.boxShadow="0 2px 8px rgba(0,0,0,0.06)"} onMouseLeave={e=>e.currentTarget.style.boxShadow="none"}>
+        <div style={{width:8,height:8,borderRadius:"50%",background:priDot(row.pri),flexShrink:0}}/>
         <div style={{flex:1,minWidth:0}}>
-          <div style={{fontSize:13,fontWeight:500,color:P.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.nome}</div>
-          <div style={{fontSize:10,color:P.steelDark,marginTop:2}}>{row.dist} &middot; {row.bairro}{row.contato?` &middot; ${row.contato}`:""}</div>
+          <div style={{fontSize:13,fontWeight:600,color:P.black,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{row.nome}</div>
+          <div style={{fontSize:11,color:P.steelDark,marginTop:3}}>{row.dist} &middot; {row.bairro}{row.contato?` &middot; ${row.contato}`:""}</div>
         </div>
-        {row.tel&&row.tel!=="—"&&row.tel!=="Ver site"&&<a href={`tel:${row.tel.replace(/[^0-9+]/g,"")}`} onClick={e=>e.stopPropagation()} style={{padding:"5px 10px",fontSize:11,borderRadius:4,background:P.black,color:P.white,textDecoration:"none",fontWeight:500,flexShrink:0}}>Ligar</a>}
+        {row.tel&&row.tel!=="—"&&row.tel!=="Ver site"&&<a href={`tel:${row.tel.replace(/[^0-9+]/g,"")}`} onClick={e=>e.stopPropagation()} style={{padding:"6px 14px",fontSize:11,borderRadius:6,background:P.black,color:P.white,textDecoration:"none",fontWeight:600,flexShrink:0}}>Ligar</a>}
       </div>
-    )};
-    const TaskGroup=({title,color,items,emptyMsg})=>(
-      <div style={{marginBottom:20}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:10}}><div style={{width:4,height:18,borderRadius:2,background:color}}/><span style={{fontSize:13,fontWeight:700,color:P.black}}>{title}</span><span style={{fontSize:12,fontWeight:600,color,background:color+"14",padding:"2px 8px",borderRadius:4}}>{items.length}</span></div>
-        {items.length>0?items.map(r=><TaskRow key={r.id} row={r}/>):<div style={{fontSize:12,color:P.steelDark,fontStyle:"italic",padding:"8px 14px"}}>Nenhuma</div>}
+    );
+    const TaskGroup=({title,color,icon,items})=>(
+      items.length>0&&<div style={{marginBottom:28}}>
+        <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,paddingBottom:8,borderBottom:`2px solid ${color}`}}>
+          <span style={{fontSize:16}}>{icon}</span>
+          <span style={{fontSize:14,fontWeight:700,color:P.black}}>{title}</span>
+          <span style={{fontSize:12,fontWeight:700,color,background:color+"14",padding:"2px 10px",borderRadius:20}}>{items.length}</span>
+        </div>
+        {items.map(r=><TaskRow key={r.id} row={r}/>)}
       </div>
     );
     return(
-      <div style={{padding:24,overflowY:"auto",height:"100%",boxSizing:"border-box"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:20}}>
-          <h2 style={{fontSize:16,fontWeight:700,color:P.black,margin:0}}>Tarefas pendentes</h2>
-          <span style={{fontSize:11,color:P.steelDark}}>{retornar.length+email.length+naoAtendeu.length} itens</span>
+      <div style={{padding:"28px 32px",overflowY:"auto",height:"100%",boxSizing:"border-box"}}>
+        <div style={{marginBottom:28}}>
+          <h2 style={{fontSize:18,fontWeight:700,color:P.black,margin:"0 0 6px"}}>Pendencias</h2>
+          <p style={{fontSize:12,color:P.steelDark,margin:0}}>{total>0?`${total} imobiliarias precisam de acao`:"Tudo em dia! Selecione uma imobiliaria na lista."}</p>
         </div>
-        <TaskGroup title="Retornar ligacao" color="#0EA5E9" items={retornar} emptyMsg="Nenhuma"/>
-        <TaskGroup title="Mandar email" color="#8B5CF6" items={email} emptyMsg="Nenhuma"/>
-        <TaskGroup title="Nao atenderam" color="#64748B" items={naoAtendeu} emptyMsg="Nenhuma"/>
+        <TaskGroup title="Retornar ligacao" color="#0EA5E9" icon="&#128222;" items={retornar}/>
+        <TaskGroup title="Mandar email" color="#8B5CF6" icon="&#9993;" items={email}/>
+        <TaskGroup title="Nao atenderam" color="#64748B" icon="&#128260;" items={naoAtendeu}/>
+        {total===0&&<div style={{textAlign:"center",padding:"40px 0",color:P.steelDark}}><div style={{fontSize:32,marginBottom:12}}>&#10003;</div><div style={{fontSize:13}}>Nenhuma pendencia. Clique numa imobiliaria pra ver detalhes.</div></div>}
       </div>
     );
   };
@@ -172,7 +177,7 @@ export default function App(){
     return(
       <div style={{padding:mob?"16px":"24px 28px"}}>
         {showBack&&<button onClick={goBack} style={{display:"flex",alignItems:"center",gap:6,background:"none",border:"none",cursor:"pointer",fontFamily:"inherit",fontSize:12,color:P.steelDark,fontWeight:500,padding:"0 0 12px"}}>&#8592; Voltar</button>}
-        {!mob&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button onClick={()=>{setDetailOpen(false);setSel(null)}} style={{padding:"3px 10px",fontSize:10,color:P.steelDark,background:"transparent",border:`1px solid ${P.steelLight}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit"}}>&#10005; Fechar</button></div>}
+        {!mob&&<div style={{display:"flex",justifyContent:"flex-end",marginBottom:8}}><button onClick={()=>setSel(null)} style={{padding:"3px 10px",fontSize:10,color:P.steelDark,background:"transparent",border:`1px solid ${P.steelLight}`,borderRadius:4,cursor:"pointer",fontFamily:"inherit"}}>&#10005; Fechar</button></div>}
         <div style={{display:"flex",alignItems:"center",gap:mob?8:12,marginBottom:6,flexWrap:"wrap"}}><div style={{width:10,height:10,borderRadius:"50%",background:priDot(it.pri),flexShrink:0}}/><h2 style={{fontSize:mob?16:20,fontWeight:700,margin:0,color:P.black}}>{it.nome}</h2><div style={{fontSize:10,fontWeight:600,padding:"3px 10px",borderRadius:4,background:gs(it.status).c+"14",color:gs(it.status).c,textTransform:"uppercase"}}>{gs(it.status).l}</div></div>
         <div style={{fontSize:12,color:P.steelDark,marginBottom:mob?14:20,paddingLeft:mob?0:22}}>{it.dist} &middot; {it.bairro} &middot; {it.endereco}</div>
         <div style={{display:"flex",gap:mob?6:8,marginBottom:mob?14:20,flexWrap:"wrap"}}>{it.tel&&it.tel!=="—"&&it.tel!=="Ver site"&&<a href={`tel:${it.tel.replace(/[^0-9+]/g,"")}`} style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,background:P.black,color:P.white,textDecoration:"none",fontWeight:600}}>{it.tel}</a>}{it.tel==="Ver site"&&<span style={{padding:"8px 16px",fontSize:12,borderRadius:6,background:"#FEF3C7",color:"#92400E",fontWeight:500}}>Buscar tel</span>}{it.insta&&it.insta!=="—"&&<a href={`https://instagram.com/${it.insta}`} target="_blank" rel="noopener" style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,border:`1px solid ${P.steelLight}`,color:P.black,textDecoration:"none",fontWeight:500,background:P.white}}>@{it.insta}</a>}{it.site&&it.site!=="—"&&<a href={`https://${it.site}`} target="_blank" rel="noopener" style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,border:`1px solid ${P.steelLight}`,color:P.black,textDecoration:"none",fontWeight:500,background:P.white}}>Site</a>}<a href={`https://www.google.com/maps/search/${encodeURIComponent((it.nome||"")+" "+(it.bairro||"")+" Sao Paulo")}`} target="_blank" rel="noopener" style={{padding:mob?"7px 12px":"8px 16px",fontSize:12,borderRadius:6,border:`1px solid ${P.steelLight}`,color:P.black,textDecoration:"none",fontWeight:500,background:P.white}}>Maps</a></div>
@@ -206,7 +211,7 @@ export default function App(){
         <div style={{display:"flex",alignItems:"center",gap:mob?8:14}}><span style={{fontSize:mob?10:11,letterSpacing:3,textTransform:"uppercase",color:P.steel,fontWeight:700}}>use.inc</span>{!mob&&<><div style={{width:1,height:20,background:"#333"}}/><span style={{fontSize:14,fontWeight:600,color:P.white}}>Controle de Imobiliarias</span><span style={{fontSize:11,color:P.steelDark}}>{data.length} mapeadas</span></>}<div style={{marginLeft:mob?4:10}}><SyncDot/></div></div>
         <div style={{display:"flex",gap:0,borderRadius:6,overflow:"hidden",border:"1px solid #333"}}>{[["tracker","Tracker"],["metricas","Metricas"],["script","Playbook"],["dados","Dados"]].map(([k,l])=><button key={k} onClick={()=>{setTab(k);if(mob)setMobileView("list")}} style={{padding:mob?"6px 10px":"7px 20px",fontSize:mob?10:11,fontWeight:tab===k?600:400,background:tab===k?P.white:"transparent",color:tab===k?P.black:P.steelDark,border:"none",cursor:"pointer",fontFamily:"inherit"}}>{l}</button>)}</div>
       </div>
-      {tab==="tracker"?(mob?(mobileView==="detail"&&it?<div ref={detailScrollRef} onScroll={e=>{detailScrollPos.current=e.target.scrollTop}} style={{flex:1,overflowY:"auto",background:P.bg}}><DetailPanel showBack={true}/></div>:<div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:P.white}}><StatsBar/><FilterBar/><ListPanel/></div>):(<div style={{display:"flex",flex:1,overflow:"hidden"}}><div style={{width:detailOpen?500:"100%",flexShrink:0,borderRight:detailOpen?`1px solid ${P.steelLight}`:"none",display:"flex",flexDirection:"column",background:P.white,transition:"width .2s"}}><StatsBar/><FilterBar/><ListPanel/></div>{detailOpen&&<div ref={detailScrollRef} onScroll={e=>{detailScrollPos.current=e.target.scrollTop}} style={{flex:1,overflowY:"auto",background:P.bg}}>{sel?<DetailPanel showBack={false}/>:<TaskPanel/>}</div>}</div>)):tab==="metricas"?<div style={{flex:1,overflowY:"auto"}}><Metrics/></div>:tab==="script"?<div style={{flex:1,overflowY:"auto"}}><ScriptTab/></div>:<div style={{flex:1,overflowY:"auto"}}><Dados/></div>}
+      {tab==="tracker"?(mob?(mobileView==="detail"&&it?<div ref={detailScrollRef} onScroll={e=>{detailScrollPos.current=e.target.scrollTop}} style={{flex:1,overflowY:"auto",background:P.bg}}><DetailPanel showBack={true}/></div>:<div style={{flex:1,display:"flex",flexDirection:"column",overflow:"hidden",background:P.white}}><StatsBar/><FilterBar/><ListPanel/></div>):(<div style={{display:"flex",flex:1,overflow:"hidden"}}><div style={{width:500,flexShrink:0,borderRight:`1px solid ${P.steelLight}`,display:"flex",flexDirection:"column",background:P.white}}><StatsBar/><FilterBar/><ListPanel/></div><div ref={detailScrollRef} onScroll={e=>{detailScrollPos.current=e.target.scrollTop}} style={{flex:1,overflowY:"auto",background:P.bg}}>{sel?<DetailPanel showBack={false}/>:<TaskPanel/>}</div></div>)):tab==="metricas"?<div style={{flex:1,overflowY:"auto"}}><Metrics/></div>:tab==="script"?<div style={{flex:1,overflowY:"auto"}}><ScriptTab/></div>:<div style={{flex:1,overflowY:"auto"}}><Dados/></div>}
     </div>
   );
 }
